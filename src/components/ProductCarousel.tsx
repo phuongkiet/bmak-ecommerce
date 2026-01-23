@@ -188,7 +188,7 @@ const ProductCarousel = ({
                                 {product.name}
                             </h3>
                         </Link>
-                        <div className="flex items-end justify-between">
+                        <div className="flex items-center justify-between">
                             <div className="text-lg font-bold text-primary-600">
                                 {product.price.toLocaleString('vi-VN')}đ
                             </div>

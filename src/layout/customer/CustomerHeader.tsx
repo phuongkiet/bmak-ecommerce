@@ -32,7 +32,7 @@ const CustomerHeader = observer(() => {
           {/* Logo Section */}
           <div className="flex-shrink-0">
             <Link to="/" className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors">
-              BMak Store
+              GAVICO
             </Link>
           </div>
           
