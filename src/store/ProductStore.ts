@@ -1,19 +1,52 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 import RootStore from './RootStore'
-import { Product, TopSellingProduct, type ProductListItemDto, type ProductSpecParams } from '@/models/Product'
+import { ProductDto, ProductSummaryDto, TopSellingProduct, type ProductSpecParams } from '@/models/Product'
+import { ProductFilterAggregationDto } from '@/models/Filter'
 import * as productApi from '@/agent/api/productApi'
 
 class ProductStore {
-  products: Product[] = []
+  products: ProductDto[] = []
+  productSummaries: ProductSummaryDto[] = [] // Danh sách ProductSummaryDto từ API mới
+  filters: ProductFilterAggregationDto | null = null // Filter aggregation từ backend
   topSellingProducts: TopSellingProduct[] = []
-  selectedProduct: Product | null = null
+  selectedProduct: ProductDto | null = null
   isLoading: boolean = false
   error: string | null = null
+  
+  // Pagination info
+  pageIndex: number = 1
+  pageSize: number = 10
+  totalCount: number = 0
+  totalPages: number = 0
+  
   rootStore: RootStore
 
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
     makeAutoObservable(this)
+  }
+
+  // Lấy minPrice từ filters aggregation (backend tính sẵn)
+  get minPrice() {
+    return this.filters?.minPrice ?? 0;
+  }
+
+  // Lấy maxPrice từ filters aggregation (backend tính sẵn)
+  get maxPrice() {
+    return this.filters?.maxPrice ?? 0;
+  }
+
+  // Lấy available attributes từ filters (backend đã aggregate sẵn với count)
+  get availableAttributes() {
+    if (!this.filters?.attributes) {
+      return [];
+    }
+    return this.filters.attributes;
+  }
+
+  // Helper: Lấy filter options theo attribute code
+  getFilterOptions(code: string) {
+    return this.filters?.attributes.find(attr => attr.code === code)?.options ?? [];
   }
 
   async fetchProducts(): Promise<void> {
@@ -34,24 +67,26 @@ class ProductStore {
     }
   }
 
-  // Lấy products dùng endpoint paging cho admin
-  async fetchProductsPaged(params: ProductSpecParams): Promise<void> {
+  // Lấy products dùng endpoint paging với filters
+  async fetchProductsPaged(params: Partial<ProductSpecParams>): Promise<void> {
     this.isLoading = true
     this.error = null
 
     try {
-      const paged = await productApi.getProductsPaged(params)
+      const response = await productApi.getProductsPaged(params)
       runInAction(() => {
-        // Map ProductListItemDto -> Product model dùng trong FE
-        this.products = paged.items.map((p: ProductListItemDto): Product => ({
-          id: p.id,
-          name: p.name,
-          description: '', // BE list không trả mô tả ngắn
-          price: p.salePrice,
-          image: p.imageUrl || '/placeholder-product.png',
-          categoryName: p.categoryName,
-          categorySlug: p.categorySlug,
-        }))
+        // Lưu ProductSummaryDto trực tiếp từ backend
+        this.productSummaries = response.products.items
+        
+        // Lưu pagination info
+        this.pageIndex = response.products.pageIndex
+        this.pageSize = response.products.pageSize
+        this.totalCount = response.products.totalCount
+        this.totalPages = response.products.totalPages
+        
+        // Lưu filters (minPrice, maxPrice, attributes)
+        this.filters = response.filters
+        
         this.isLoading = false
       })
     } catch (error) {
@@ -70,6 +105,7 @@ class ProductStore {
       const data = await productApi.getProductById(id)
       runInAction(() => {
         this.selectedProduct = data
+        console.log("Fetched product:", data)
         this.isLoading = false
       })
     } catch (error) {
@@ -85,37 +121,35 @@ class ProductStore {
   }
 
   // Cache for products by tag
-  private productsByTag: Map<string, Product[]> = new Map()
-  private loadingTags: Set<string> = new Set()
+  private productsByTag: Map<string, ProductDto[]> = new Map()
+  // private loadingTags: Set<string> = new Set()
 
-  getProductsByTag(tag: string): Product[] {
+  getProductsByTag(tag: string): ProductDto[] {
     return this.productsByTag.get(tag) || []
   }
 
-  async loadProducts(params: ProductSpecParams): Promise<Product[]> {
+  async loadProducts(params: Partial<ProductSpecParams>): Promise<ProductSummaryDto[]> {
     try {
-      const paged = await productApi.getProductsPaged(params)
+      const response = await productApi.getProductsPaged(params)
       
-      // Map DTO sang Model ngay tại Store để UI đỡ phải map
-      const mappedProducts: Product[] = paged.items.map((p: ProductListItemDto) => ({
-        id: p.id,
-        name: p.name,
-        description: '', 
-        price: p.salePrice,
-        image: p.imageUrl || '/placeholder-product.png', // Fallback ảnh
-        categoryName: p.categoryName,
-        categorySlug: p.categorySlug,
-        // Nếu API có trả về rating/originalPrice thì map thêm vào đây
-      }))
+      runInAction(() => {
+        // Cập nhật store state
+        this.productSummaries = response.products.items
+        this.filters = response.filters
+        this.pageIndex = response.products.pageIndex
+        this.pageSize = response.products.pageSize
+        this.totalCount = response.products.totalCount
+        this.totalPages = response.products.totalPages
+      })
 
-      return mappedProducts
+      return response.products.items
     } catch (error) {
       console.error("Error loading products:", error)
       return [] // Trả về mảng rỗng để UI không bị crash
     }
   }
 
-  async getTopSelling(): Promise<Product[]> {
+  async getTopSelling(): Promise<ProductDto[]> {
     try {
       const data = await productApi.getTopSellingProducts()
       
@@ -123,15 +157,24 @@ class ProductStore {
         this.topSellingProducts = data
       })
 
-      // Map TopSellingProduct -> Product (để tái sử dụng component Product Card)
+      // Map TopSellingProduct -> ProductDto (để tái sử dụng component Product Card)
       return data.map(p => ({
         id: p.id,
         name: p.name,
-        price: p.salePrice,
-        image: p.imageUrl || '/placeholder-product.png',
-        description: '',
-        categoryName: p.categoryName || '',
-        categorySlug: ''
+        sku: p.sku,
+        slug: p.slug,
+        price: p.price,
+        originalPrice: p.originalPrice,
+        thumbnail: p.thumbnail,
+        // Các trường không có trong response -> set mặc định
+        salesUnit: '',
+        priceUnit: '',
+        conversionFactor: 1,
+        stockQuantity: 0,
+        images: [],
+        attributes: [],
+        categoryId: 0,
+        categoryName: '',
       }))
     } catch (error) {
       console.error("Error loading top selling:", error)
@@ -139,34 +182,34 @@ class ProductStore {
     }
   }
 
-  // --- LOGIC TAG (Đã tối ưu) ---
-  async fetchProductsByTag(tag: string): Promise<Product[]> {
-    // 1. Trả về cache nếu có
-    if (this.productsByTag.has(tag)) {
-      return this.productsByTag.get(tag)!
-    }
+  // // --- LOGIC TAG (Đã tối ưu) ---
+  // async fetchProductsByTag(tag: string): Promise<Product[]> {
+  //   // 1. Trả về cache nếu có
+  //   if (this.productsByTag.has(tag)) {
+  //     return this.productsByTag.get(tag)!
+  //   }
 
-    // 2. Chặn duplicate request
-    if (this.loadingTags.has(tag)) {
-      return [] 
-    }
+  //   // 2. Chặn duplicate request
+  //   if (this.loadingTags.has(tag)) {
+  //     return [] 
+  //   }
 
-    this.loadingTags.add(tag)
+  //   this.loadingTags.add(tag)
     
-    try {
-      const data = await productApi.getProductsByTag(tag)
-      runInAction(() => {
-        this.productsByTag.set(tag, data)
-        this.loadingTags.delete(tag)
-      })
-      return data
-    } catch (error) {
-      runInAction(() => {
-        this.loadingTags.delete(tag)
-      })
-      return []
-    }
-  }
+  //   try {
+  //     const data = await productApi.getProductsByTag(tag)
+  //     runInAction(() => {
+  //       this.productsByTag.set(tag, data)
+  //       this.loadingTags.delete(tag)
+  //     })
+  //     return data
+  //   } catch (error) {
+  //     runInAction(() => {
+  //       this.loadingTags.delete(tag)
+  //     })
+  //     return []
+  //   }
+  // }
 
   clearTagCache(tag?: string): void {
     if (tag) {

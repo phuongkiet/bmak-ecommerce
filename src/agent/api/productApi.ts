@@ -1,47 +1,47 @@
 import { apiClient } from './apiClient'
 import {
-  Product,
+  ProductDto,
   ProductCategory,
   TopSellingProduct,
-  type ProductSpecParams,
+  ProductListResponse,
 } from '@/models/Product'
-import type { ProductPagedListDto } from '@/models/ProductPaged'
+import { ProductSpecParamsBuilder, type ProductSpecParams } from '@/models/common/ProductSpecParams'
 import { ApiResponse } from './apiClient'
 
 // Legacy: get all products (không paging) - nếu backend không hỗ trợ, có thể bỏ
-export const getProducts = async (): Promise<Product[]> => {
-  const response = await apiClient.get<ApiResponse<Product[]> | Product[]>('/products')
+export const getProducts = async (): Promise<ProductDto[]> => {
+  const response = await apiClient.get<ApiResponse<ProductDto[]> | ProductDto[]>('/products')
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<Product[]>).data || []
+  return (response as ApiResponse<ProductDto[]>).data || []
 }
 
-export const getProductById = async (id: number): Promise<Product> => {
-  const response = await apiClient.get<ApiResponse<Product> | Product>(`/products/${id}`)
+export const getProductById = async (id: number): Promise<ProductDto> => {
+  const response = await apiClient.get<ApiResponse<ProductDto> | ProductDto>(`/products/${id}`)
   // Handle both response formats
   if ('id' in response && 'name' in response) {
-    return response as Product
+    return response as ProductDto
   }
-  return (response as ApiResponse<Product>).data
+  return (response as ApiResponse<ProductDto>).data
 }
 
-export const getProductsByCategory = async (categoryId: number): Promise<Product[]> => {
-  const response = await apiClient.get<ApiResponse<Product[]> | Product[]>(`/products?categoryId=${categoryId}`)
+export const getProductsByCategory = async (categoryId: number): Promise<ProductDto[]> => {
+  const response = await apiClient.get<ApiResponse<ProductDto[]> | ProductDto[]>(`/products?categoryId=${categoryId}`)
   // Handle both response formats
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<Product[]>).data || []
+  return (response as ApiResponse<ProductDto[]>).data || []
 }
 
-export const searchProducts = async (query: string): Promise<Product[]> => {
-  const response = await apiClient.get<ApiResponse<Product[]> | Product[]>(`/products/search?q=${encodeURIComponent(query)}`)
+export const searchProducts = async (query: string): Promise<ProductDto[]> => {
+  const response = await apiClient.get<ApiResponse<ProductDto[]> | ProductDto[]>(`/products/search?q=${encodeURIComponent(query)}`)
   // Handle both response formats
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<Product[]>).data || []
+  return (response as ApiResponse<ProductDto[]>).data || []
 }
 
 export const getProductCategories = async (): Promise<ProductCategory[]> => {
@@ -53,20 +53,20 @@ export const getProductCategories = async (): Promise<ProductCategory[]> => {
   return (response as ApiResponse<ProductCategory[]>).data || []
 }
 
-export const getProductsByTag = async (tag: string): Promise<Product[]> => {
-  const paged = await getProductsPaged({ tag, pageIndex: 1, pageSize: 20 })
-  // Map về Product đơn giản cho FE
-  return paged.items.map((p) => ({
-    id: p.id,
-    name: p.name,
-    description: '',
-    price: p.salePrice,
-    image: p.imageUrl || '/placeholder-product.png',
-    categoryName: p.categoryName,
-    categorySlug: p.categorySlug,
-    tag: p.tag,
-  }))
-}
+// export const getProductsByTag = async (tag: string): Promise<ProductDto[]> => {
+//   const paged = await getProductsPaged({ tag, pageIndex: 1, pageSize: 20 })
+//   // Map về Product đơn giản cho FE
+//   return paged.items.map((p) => ({
+//     id: p.id,
+//     name: p.name,
+//     description: '',
+//     price: p.salePrice,
+//     image: p.imageUrl || '/placeholder-product.png',
+//     categoryName: p.categoryName,
+//     categorySlug: p.categorySlug,
+//     tag: p.tag,
+//   }))
+// }
 
 export const getTopSellingProducts = async (): Promise<TopSellingProduct[]> => {
   const response = await apiClient.get<ApiResponse<TopSellingProduct[]> | TopSellingProduct[]>('/products/top-selling')
@@ -78,20 +78,20 @@ export const getTopSellingProducts = async (): Promise<TopSellingProduct[]> => {
 }
 
 // New: GET /api/products với paging & filter
+// Backend trả về ProductListResponse với products (có pagination) và filters
 export const getProductsPaged = async (
-  params: ProductSpecParams
-): Promise<ProductPagedListDto> => {
-  const query = new URLSearchParams()
+  params: Partial<ProductSpecParams>
+): Promise<ProductListResponse> => {
+  // Sử dụng ProductSpecParamsBuilder để format query params đúng
+  const builder = new ProductSpecParamsBuilder(params)
+  const query = builder.toURLSearchParams()
 
-  if (params.pageIndex != null) query.append('pageIndex', String(params.pageIndex))
-  if (params.pageSize != null) query.append('pageSize', String(params.pageSize))
-  if (params.sort) query.append('sort', params.sort)
-  if (params.attributes) query.append('attributes', params.attributes)
-  if (params.search) query.append('search', params.search)
-  if (params.categoryId != null) query.append('categoryId', String(params.categoryId))
-  if (params.tag) query.append('tag', params.tag)
+  const response = await apiClient.get<ProductListResponse>(`/products?${query.toString()}`)
 
-  return apiClient.get<ProductPagedListDto>(`/products?${query.toString()}`)
+  // Response từ backend bao gồm:
+  // - products: { items: ProductSummaryDto[], pageIndex, pageSize, totalCount, totalPages }
+  // - filters: { minPrice, maxPrice, attributes: FilterGroupDto[] }
+  return response
 }
 
 // POST: /api/products

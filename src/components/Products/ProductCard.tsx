@@ -13,6 +13,7 @@ const ProductCard = ({ products }: ProductCardProps) => {
   const navigate = useNavigate();
 
   const handleViewDetail = (productId: number) => {
+    console.log("Đang chọn sản phẩm với ID:", productId);
     navigate(`/products/${productId}`);
   };
 
@@ -38,7 +39,7 @@ const ProductCard = ({ products }: ProductCardProps) => {
               }}
             >
               {product.name.length > 20
-                ? product.name.slice(0, 23) + "..."
+                ? product.name.slice(0, 20) + "..."
                 : product.name}
             </h3>
             <p className="text-primary-600 font-bold mt-2">

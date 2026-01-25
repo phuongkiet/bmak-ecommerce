@@ -1,70 +1,140 @@
+import { useEffect, useState } from "react";
 import ColorFilter from "@/components/Filters/ColorFilter";
 import OriginFilter from "@/components/Filters/OriginFilter";
 import PriceFilter from "@/components/Filters/PriceFilter";
 import SizeFilter from "@/components/Filters/SizeFilter";
 import SurfaceFilter from "@/components/Filters/SurfaceFilter";
 import ProductCard from "@/components/Products/ProductCard";
+import { useStore } from "@/store";
+import { observer } from "mobx-react-lite";
 
-// Mock data - sẽ thay thế bằng API sau
-const products = [
-  {
-    id: 1,
-    name: "HCMC1.51ST – 60 x 120 cm – STONE GẠCH VÂN ĐÁ GRANITE XÁM 01 BÓNG KÍNH – MÀI MEN PORCELAIN GỐM SỨ THÂN GẠCH HẠT MÈ",
-    price: 299000,
-    image: "https://ankhanhhouse.com/wp-content/uploads/2026/01/HCMC1.113WO1-300x300.webp",
-  },
-  {
-    id: 2,
-    name: "Sản phẩm 2",
-    price: 399000,
-    image: "https://ankhanhhouse.com/wp-content/uploads/2026/01/SG-66.609MHCMC1.57ST1-300x300.webp",
-  },
-  {
-    id: 3,
-    name: "Sản phẩm 3",
-    price: 499000,
-    image: "https://ankhanhhouse.com/wp-content/uploads/2026/01/SG-66.616MHCMC1.63ST1-300x300.webp",
-  },
-  {
-    id: 4,
-    name: "Sản phẩm 4",
-    price: 599000,
-    image: "https://ankhanhhouse.com/wp-content/uploads/2025/12/TRAVERTINEBEIGESG-612.061M2-300x300.webp",
-  },
-];
+const Products = observer(() => {
+  const { productStore } = useStore();
+  const { productSummaries, minPrice, maxPrice, filters, isLoading, error } = productStore;
+  
+  // Filter state
+  const [selectedFilters, setSelectedFilters] = useState<{
+    minPrice?: number;
+    maxPrice?: number;
+    color?: string;
+    size?: string;
+  }>({});
 
-const Products = () => {
+  // Fetch products on mount
+  useEffect(() => {
+    productStore.fetchProductsPaged({ pageIndex: 1, pageSize: 12 });
+  }, [productStore]);
+
+  // Refetch when filters change
+  const applyFilters = (newFilters: typeof selectedFilters) => {
+    setSelectedFilters(newFilters);
+    productStore.fetchProductsPaged({
+      pageIndex: 1,
+      pageSize: 12,
+      ...newFilters,
+    });
+  };
+
+  // Map ProductSummaryDto to ProductCard format
+  const products = productSummaries.map((p) => ({
+    id: p.id,
+    name: p.name,
+    image: p.thumbnail || "/placeholder-product.png",
+    price: p.price ?? p.originalPrice ?? 0,
+  }));
+
+  const handlePriceChange = (range: number[]) => {
+    applyFilters({
+      ...selectedFilters,
+      minPrice: range[0],
+      maxPrice: range[1],
+    });
+  };
+  
+  const handleColorChange = (color: string) => {
+    applyFilters({
+      ...selectedFilters,
+      color,
+    });
+  };
+  
+  const handleSizeChange = (size: string) => {
+    applyFilters({
+      ...selectedFilters,
+      size,
+    });
+  };
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setSelectedFilters({});
+    productStore.fetchProductsPaged({
+      pageIndex: 1,
+      pageSize: 12,
+    });
+  };
+  
+  // Check if any filter is active
+  const hasActiveFilters = Object.keys(selectedFilters).length > 0;
+  
   return (
     <>
       <div className="grid grid-cols-12 mx-20">
         <div className="col-span-3 container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-3">Bộ lọc</h1>
-          {/* Bộ lọc sẽ được thêm vào đây sau */}
+          <div className="flex justify-between items-center mb-3">
+            <h1 className="text-3xl font-bold">Bộ lọc</h1>
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium underline mt-3"
+              >
+                Xóa lọc
+              </button>
+            )}
+          </div>
           <div className="space-y-6">
             {/* Giá */}
-            <PriceFilter/>
-            <hr/>
+            <PriceFilter
+              min={minPrice}
+              max={maxPrice}
+              onChange={handlePriceChange}
+            />
+            <hr />
             {/* Màu sắc */}
-            <ColorFilter/>
-            <hr/>
+            <ColorFilter
+              options={filters?.attributes.find((a) => a.code === "COLOR")?.options || []}
+              selectedColor={selectedFilters.color}
+              onChange={handleColorChange}
+            />
+            <hr />
             {/* Xuất xứ */}
-            <OriginFilter/>
-            <hr/>
+            <OriginFilter />
+            <hr />
             {/* Kích thước */}
-            <SizeFilter/>
-            <hr/>
+            <SizeFilter
+              options={filters?.attributes.find((a) => a.code === "SIZE")?.options || []}
+              selectedSize={selectedFilters.size}
+              onChange={handleSizeChange}
+            />
+            <hr />
             {/* Bề mặt */}
-            <SurfaceFilter/>
-            <hr/>
+            <SurfaceFilter />
+            <hr />
           </div>
         </div>
         <div className="col-span-9 container mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold mb-8">Tất cả sản phẩm</h1>
-          <ProductCard products={products} />
+          {isLoading ? (
+            <div className="py-16 text-center text-gray-500">Đang tải sản phẩm...</div>
+          ) : error ? (
+            <div className="py-8 text-center text-red-600">{error}</div>
+          ) : (
+            <ProductCard products={products} />
+          )}
         </div>
       </div>
     </>
   );
-};
+});
 
 export default Products;

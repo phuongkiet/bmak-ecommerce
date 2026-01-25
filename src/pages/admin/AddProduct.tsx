@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
 import { Upload, X, Save, ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
-import type { CreateProductCommand, ProductAttributeCreateDto } from '@/models/Product'
+import type { CreateProductCommand } from '@/models/Product'
 import Select from 'react-select'
 import * as tagApi from '@/agent/api/tagApi'
-import type { Tag, CreateTagCommand } from '@/models/Tag'
+import type { TagDto, CreateTagCommand } from '@/models/Tag'
 import * as attributeApi from '@/agent/api/attributeApi'
 import type { Attribute } from '@/models/Attribute'
+import { ProductAttributeCreateDto } from '@/models/ProductAttribute'
 
 const AddProduct = observer(() => {
   const navigate = useNavigate()
@@ -40,10 +41,10 @@ const AddProduct = observer(() => {
 
   // Image upload state
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [, setImageFile] = useState<File | null>(null)
 
   // Tags state
-  const [tags, setTags] = useState<Tag[]>([])
+  const [tags, setTags] = useState<TagDto[]>([])
   const [isLoadingTags, setIsLoadingTags] = useState(false)
   
   // Modal state

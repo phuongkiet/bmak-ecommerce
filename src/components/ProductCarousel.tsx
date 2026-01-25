@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react'
 import { useStore } from '@/store'
+import { formatPrice } from '@/utils'
 
 // Interface Local dùng cho hiển thị (UI Model)
 interface CarouselItem {
@@ -89,11 +90,11 @@ const ProductCarousel = ({
              })
              break
 
-          case 'tag':
-             if (tag) {
-                rawData = await productStore.fetchProductsByTag(tag)
-             }
-             break
+          // case 'tag':
+          //    if (tag) {
+          //       rawData = await productStore.fetchProductsByTag(tag)
+          //    }
+          //    break
 
           case 'category':
              // Logic category (tận dụng loadProducts với params search/filter)
@@ -109,14 +110,19 @@ const ProductCarousel = ({
              rawData = await productStore.loadProducts({ pageIndex: 1, pageSize: 8 })
         }
 
-        // Map về UI Model của Carousel
-        const mappedItems: CarouselItem[] = rawData.map(p => ({
-            id: p.id,
-            name: p.name,
-            image: p.image || '/placeholder.png',
-            price: p.price,
-            originalPrice: undefined, // Nếu Model Product của bạn có thì map vào
-            rating: 5 // Default hoặc lấy từ p.rating
+        // Map về UI Model của Carousel (fallback an toàn để tránh undefined)
+        const mappedItems: CarouselItem[] = rawData.map((p) => ({
+          id: p.id,
+          name: p.name,
+          image:
+            (p as any).thumbnail ||
+            (p as any).imageUrl ||
+            (p as any).image ||
+            '/placeholder.png',
+          // Ưu tiên price; fallback sang salePrice/basePrice
+          price: (p as any).price ?? (p as any).salePrice ?? (p as any).basePrice ?? 0,
+          originalPrice: (p as any).originalPrice,
+          rating: (p as any).rating ?? 0,
         }))
 
         setProducts(mappedItems)
@@ -190,7 +196,7 @@ const ProductCarousel = ({
                         </Link>
                         <div className="flex items-center justify-between">
                             <div className="text-lg font-bold text-primary-600">
-                                {product.price.toLocaleString('vi-VN')}đ
+                              {formatPrice(product.price)}
                             </div>
                             <button className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-primary-600 hover:text-white transition-all shadow-sm">
                                 <ShoppingCart size={18} />

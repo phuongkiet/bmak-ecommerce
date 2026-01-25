@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import type { Product } from '@/models/Product'
+import type { ProductSummaryDto } from '@/models/Product'
 
 const AdminProducts = observer(() => {
   const navigate = useNavigate()
@@ -31,14 +31,14 @@ const AdminProducts = observer(() => {
     })
   }, [productStore])
 
-  const columns = useMemo<ColumnDef<Product>[]>(
+  const columns = useMemo<ColumnDef<ProductSummaryDto>[]>(
     () => [
       {
-        accessorKey: 'image',
+        accessorKey: 'thumbnail',
         header: 'Hình ảnh',
         cell: ({ row }) => (
           <img
-            src={row.original.image}
+            src={row.original.thumbnail || '/placeholder-product.png'}
             alt={row.original.name}
             className="h-12 w-12 object-cover rounded"
           />
@@ -54,7 +54,7 @@ const AdminProducts = observer(() => {
             ) : (
               <div className="text-sm font-medium text-gray-900">{row.original.name}</div>
             )}
-            <div className="text-sm text-gray-500">{row.original.description}</div>
+            <div className="text-sm text-gray-500">SKU: {row.original.sku}</div>
           </div>
         ),
       },
@@ -62,14 +62,32 @@ const AdminProducts = observer(() => {
         accessorKey: 'price',
         header: 'Giá',
         cell: ({ row }) => (
-          <span className="text-sm text-gray-900">{formatPrice(row.original.price)}</span>
+          <div className="text-sm">
+            <div className="text-gray-900 font-semibold">{formatPrice(row.original.price)}</div>
+            {row.original.originalPrice && row.original.originalPrice > row.original.price && (
+              <div className="text-gray-400 line-through text-xs">{formatPrice(row.original.originalPrice)}</div>
+            )}
+          </div>
         ),
       },
       {
-        accessorKey: 'stock',
-        header: 'Tồn kho',
+        accessorKey: 'totalSold',
+        header: 'Đã bán',
         cell: ({ row }) => (
-          <span className="text-sm text-gray-500">{row.original.stock ?? 'N/A'}</span>
+          <span className="text-sm text-gray-500">{row.original.totalSold || 0}</span>
+        ),
+      },
+      {
+        accessorKey: 'rating',
+        header: 'Đánh giá',
+        cell: ({ row }) => (
+          <div className="text-sm text-gray-500">
+            {row.original.rating > 0 ? (
+              <span>⭐ {row.original.rating.toFixed(1)} ({row.original.reviewCount})</span>
+            ) : (
+              <span>Chưa có</span>
+            )}
+          </div>
         ),
       },
       {
@@ -91,7 +109,7 @@ const AdminProducts = observer(() => {
   )
 
   const table = useReactTable({
-    data: productStore.products,
+    data: productStore.productSummaries,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

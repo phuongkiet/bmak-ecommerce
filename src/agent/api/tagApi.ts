@@ -1,16 +1,16 @@
 import { apiClient } from './apiClient'
-import { Tag, CreateTagCommand } from '@/models/Tag'
+import { TagDto, CreateTagCommand } from '@/models/Tag'
 import { ApiResponse } from './apiClient'
 
 // GET: /api/tags
-export const getTags = async (): Promise<Tag[]> => {
-  const response = await apiClient.get<ApiResponse<Tag[]> | Tag[]>('/tags')
+export const getTags = async (): Promise<TagDto[]> => {
+  const response = await apiClient.get<ApiResponse<TagDto[]> | TagDto[]>('/tags')
   
   // Handle both response formats
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<Tag[]>).data || []
+  return (response as ApiResponse<TagDto[]>).data || []
 }
 
 // POST: /api/tags
