@@ -1,44 +1,69 @@
-import { apiClient } from './apiClient'
-import { CartItem } from '@/models/CartItem'
-import { ApiResponse } from './apiClient'
+import { ShoppingCart } from '@/models/Cart'
+import { ApiResponse, apiClient } from './apiClient'
 
-export const getCart = async (): Promise<CartItem[]> => {
-  const response = await apiClient.get<ApiResponse<CartItem[]> | CartItem[]>('/cart')
-  // Handle both response formats
-  if (Array.isArray(response)) {
-    return response
-  }
-  return (response as ApiResponse<CartItem[]>).data || []
+type CartResult = ApiResponse<ShoppingCart> | ShoppingCart
+
+const normalizeCart = (response: CartResult): ShoppingCart => {
+  return 'data' in response ? response.data : response
 }
 
-export const addToCart = async (productId: number, quantity: number): Promise<CartItem> => {
-  const response = await apiClient.post<ApiResponse<CartItem> | CartItem>('/cart', {
+export interface AddToCartPayload {
+  /** Backend expects this `id` query/body field for the current cart (e.g., guest token). */
+  id: string
+  /** Some backends name this property `CartId`; send both to be safe. */
+  cartId?: string
+  productId: number
+  quantity: number
+}
+
+export const getCart = async (id: string): Promise<ShoppingCart> => {
+  const response = await apiClient.get<CartResult>(`/Cart?id=${encodeURIComponent(id)}`)
+  return normalizeCart(response)
+}
+
+export const addToCart = async (payload: AddToCartPayload): Promise<ShoppingCart> => {
+  const body = {
+    id: payload.id,
+    cartId: payload.cartId ?? payload.id,
+    productId: payload.productId,
+    quantity: payload.quantity,
+  }
+  const response = await apiClient.post<CartResult>(
+    `/Cart?id=${encodeURIComponent(payload.id)}`,
+    body
+  )
+  return normalizeCart(response)
+}
+
+export const clearCart = async (id: string): Promise<ShoppingCart> => {
+  const response = await apiClient.delete<CartResult>(`/Cart?cartId=${encodeURIComponent(id)}`)
+  return normalizeCart(response)
+}
+
+export const updateCartItem = async (
+  id: string,
+  productId: number,
+  quantity: number
+): Promise<ShoppingCart> => {
+  const body = {
+    cartId: id,
     productId,
     quantity,
-  })
-  // Handle both response formats
-  if ('id' in response && 'productId' in response) {
-    return response as CartItem
   }
-  return (response as ApiResponse<CartItem>).data
+  const response = await apiClient.put<CartResult>(
+    `/Cart?cartId=${encodeURIComponent(id)}`,
+    body
+  )
+  return normalizeCart(response)
 }
 
-export const updateCartItem = async (itemId: number, quantity: number): Promise<CartItem> => {
-  const response = await apiClient.put<ApiResponse<CartItem> | CartItem>(`/cart/${itemId}`, {
-    quantity,
-  })
-  // Handle both response formats
-  if ('id' in response && 'productId' in response) {
-    return response as CartItem
-  }
-  return (response as ApiResponse<CartItem>).data
-}
-
-export const removeFromCart = async (itemId: number): Promise<void> => {
-  await apiClient.delete(`/cart/${itemId}`)
-}
-
-export const clearCart = async (): Promise<void> => {
-  await apiClient.delete('/cart')
-}
+export const deleteCartItem = async (
+  id: string,
+  productId: number
+): Promise<ShoppingCart> => {
+  const response = await apiClient.put<CartResult>(
+    `/Cart/item?cartId=${encodeURIComponent(id)}&productId=${productId}`
+  )
+  return normalizeCart(response)
+} 
 

@@ -6,7 +6,7 @@ import { observer } from 'mobx-react-lite'
 
 const ProductDetail = observer(() => {
   const { id } = useParams()
-  const { productStore } = useStore()
+  const { productStore, cartStore } = useStore()
   
   useEffect(() => {
     if (id) {
@@ -117,7 +117,11 @@ const ProductDetail = observer(() => {
           </div>
           
           <div className="space-y-4">
-            <button className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">
+            <button
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={() => cartStore.addItem(product.id, 1)}
+              disabled={cartStore.isLoading}
+            >
               Thêm vào giỏ hàng
             </button>
             <button className="w-full bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
