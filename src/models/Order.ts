@@ -1,5 +1,3 @@
-import { CartItem } from './CartItem'
-
 export interface OrderParams {
   pageNumber: number;
   pageSize: number;
@@ -49,12 +47,31 @@ export interface OrderDto {
 export type OrderStatus = 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled'
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded'
 
+export interface OrderAddressDto {
+  province: string
+  // district: string
+  ward: string
+  specificAddress: string
+}
+
 export interface CreateOrderData {
-  items: CartItem[]
-  shippingAddress: string
-  shippingPhone: string
-  shippingName: string
+  cartId: string
+  note?: string
   paymentMethod: string
+  
+  // Thông tin người mua / Thanh toán (Billing)
+  buyerName: string
+  buyerPhone: string
+  buyerEmail: string
+  billingAddress: OrderAddressDto
+  
+  // Cờ checkbox: Giao đến địa chỉ khác
+  shipToDifferentAddress: boolean
+  
+  // Thông tin người nhận (Shipping) - optional
+  receiverName?: string
+  receiverPhone?: string
+  shippingAddress?: OrderAddressDto
 }
 
 

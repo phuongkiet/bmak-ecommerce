@@ -3,13 +3,15 @@ import { OrderDto, CreateOrderData, OrderSummaryDto, OrderParams } from '@/model
 import { ApiResponse } from './apiClient'
 import { PaginatedResult } from '@/models/Common'
 
-export const createOrder = async (data: CreateOrderData): Promise<OrderDto> => {
-  const response = await apiClient.post<ApiResponse<OrderDto> | OrderDto>('/Orders', data)
-  // Handle both response formats
-  if ('id' in response && 'userId' in response) {
-    return response as OrderDto
-  }
-  return (response as ApiResponse<OrderDto>).data
+interface CreateOrderResponse {
+  isSuccess: boolean
+  value: number // orderId
+  error: string | null
+}
+
+export const createOrder = async (data: CreateOrderData): Promise<CreateOrderResponse> => {
+  const response = await apiClient.post<CreateOrderResponse>('/Orders', data)
+  return response
 }
 
 export const getOrders = async (params: OrderParams): Promise<PaginatedResult<OrderSummaryDto[]>> => {
@@ -55,7 +57,7 @@ export const getOrders = async (params: OrderParams): Promise<PaginatedResult<Or
 export const getOrderById = async (id: number): Promise<OrderDto> => {
   const response = await apiClient.get<ApiResponse<OrderDto> | OrderDto>(`/Orders/${id}`)
   // Handle both response formats
-  if ('id' in response && 'userId' in response) {
+  if ('id' in response && 'orderCode' in response) {
     return response as OrderDto
   }
   return (response as ApiResponse<OrderDto>).data
@@ -64,7 +66,7 @@ export const getOrderById = async (id: number): Promise<OrderDto> => {
 export const cancelOrder = async (id: number): Promise<OrderDto> => {
   const response = await apiClient.put<ApiResponse<OrderDto> | OrderDto>(`/Orders/${id}/cancel`)
   // Handle both response formats
-  if ('id' in response && 'userId' in response) {
+  if ('id' in response && 'orderCode' in response) {
     return response as OrderDto
   }
   return (response as ApiResponse<OrderDto>).data

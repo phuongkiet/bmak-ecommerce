@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 import RootStore from './RootStore'
-import { OrderDto, OrderSummaryDto, OrderParams } from '@/models/Order'
+import { OrderDto, OrderSummaryDto, OrderParams, CreateOrderData } from '@/models/Order'
 import * as orderApi from '@/agent/api/orderApi'
 import { PaginatedResult } from '@/models/Common';
 import { OrderStatus } from "@/models/Order";
@@ -15,6 +15,35 @@ class OrderStore {
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
     makeAutoObservable(this)
+  }
+
+  async createOrder(data: CreateOrderData): Promise<{ success: boolean; orderId?: number; error?: string }> {
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const result = await orderApi.createOrder(data)
+      
+      runInAction(() => {
+        this.isLoading = false
+      })
+
+      if (result.isSuccess) {
+        return { success: true, orderId: result.value }
+      } else {
+        runInAction(() => {
+          this.error = result.error || 'Đặt hàng thất bại'
+        })
+        return { success: false, error: result.error || 'Đặt hàng thất bại' }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi đặt hàng'
+      runInAction(() => {
+        this.error = errorMessage
+        this.isLoading = false
+      })
+      return { success: false, error: errorMessage }
+    }
   }
 
   async fetchOrders(params: OrderParams): Promise<void> {

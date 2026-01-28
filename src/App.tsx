@@ -24,6 +24,7 @@ import AdminCategories from './pages/admin/AdminCategories'
 import AdminReports from './pages/admin/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminPages from './pages/admin/AdminPages'
+import CompleteCheckout from './pages/CompleteCheckout'
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
                   <Route path="/news" element={<News />} />
                   <Route path="/showcase" element={<Showcase />} />
                   <Route path="/about" element={<AboutUs />} />
+                  <Route path="/complete-checkout" element={<CompleteCheckout />} />
                 </Routes>
               </CustomerLayout>
             }

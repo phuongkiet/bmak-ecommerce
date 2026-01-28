@@ -1,11 +1,13 @@
 import { observer } from 'mobx-react-lite'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/store'
 import { formatPrice } from '@/utils'
 import { Trash2, Minus, Plus } from 'lucide-react'
 
 const Cart = observer(() => {
   const { cartStore } = useStore()
+  const navigate = useNavigate()
   const [updatingProductId, setUpdatingProductId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -128,7 +130,11 @@ const Cart = observer(() => {
                 <span>{cartStore.totalSquareMeter}</span>
               </div>
             )}
-            <button className="w-full mb-3 bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed" disabled={cartStore.isLoading}>
+            <button 
+              onClick={() => navigate('/checkout')}
+              className="w-full mb-3 bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed" 
+              disabled={cartStore.isLoading || items.length === 0}
+            >
               Tiến hành thanh toán
             </button>
             <button
