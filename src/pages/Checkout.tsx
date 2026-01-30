@@ -3,9 +3,11 @@ import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
 import { CreateOrderData, OrderAddressDto } from '@/models/Order'
 import { formatPrice } from '@/utils'
+import ProvinceSelectComponent from '@/components/Address/ProvinceSelectComponent'
+import WardSelectComponent from '@/components/Address/WardSelectComponent'
 
 const Checkout = observer(() => {
-  const { cartStore, orderStore } = useStore()
+  const { cartStore, orderStore, provinceStore, wardStore } = useStore()
 
   // Form state
   const [formData, setFormData] = useState<CreateOrderData>({
@@ -29,6 +31,7 @@ const Checkout = observer(() => {
 
   useEffect(() => {
     document.title = 'Thanh toán - GAVICO'
+    provinceStore.fetchProvinces()
   }, [])
 
   const subTotal = cartStore.totalPrice
@@ -165,25 +168,44 @@ const Checkout = observer(() => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Tỉnh/Thành phố *</label>
-                  <input
-                    type="text"
+                  <ProvinceSelectComponent
+                    data={provinceStore.provinces}
                     value={formData.billingAddress.province}
-                    onChange={e => handleAddressChange(e, 'province', 'billing')}
-                    placeholder="TP. Hồ Chí Minh"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    required
+                    onChange={province => {
+                      setFormData(prev => ({
+                        ...prev,
+                        billingAddress: {
+                          ...prev.billingAddress,
+                          province: province?.id || '',
+                          ward: '', // Reset ward khi đổi province
+                        },
+                      }))
+                      // Clear và load wards mới
+                      wardStore.clearWards()
+                      if (province?.id) {
+                        wardStore.fetchWardsByProvinceId(province.id)
+                      }
+                    }}
+                    isLoading={provinceStore.isLoading}
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Phường/Xã *</label>
-                    <input
-                      type="text"
+                    <WardSelectComponent
+                      data={wardStore.wards}
                       value={formData.billingAddress.ward}
-                      onChange={e => handleAddressChange(e, 'ward', 'billing')}
-                      placeholder="Phường Bến Nghé"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
+                      onChange={ward => {
+                        setFormData(prev => ({
+                          ...prev,
+                          billingAddress: {
+                            ...prev.billingAddress,
+                            ward: ward?.id || '',
+                          },
+                        }))
+                      }}
+                      isDisabled={!formData.billingAddress.province}
+                      isLoading={wardStore.isLoading}
                     />
                   </div>
                 </div>
@@ -256,24 +278,42 @@ const Checkout = observer(() => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Tỉnh/Thành phố *</label>
-                    <input
-                      type="text"
+                    <ProvinceSelectComponent
+                      data={provinceStore.provinces}
                       value={formData.shippingAddress?.province || ''}
-                      onChange={e => handleAddressChange(e, 'province', 'shipping')}
-                      placeholder="TP. Hồ Chí Minh"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
+                      onChange={province => {
+                        setFormData(prev => ({
+                          ...prev,
+                          shippingAddress: {
+                            ...(prev.shippingAddress || { province: '', ward: '', specificAddress: '' }),
+                            province: province?.id || '',
+                            ward: '', // Reset ward khi đổi province
+                          },
+                        }))
+                        // Clear và load wards mới cho shipping address
+                        if (province?.id) {
+                          wardStore.fetchWardsByProvinceId(province.id)
+                        }
+                      }}
+                      isLoading={provinceStore.isLoading}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Phường/Xã *</label>
-                    <input
-                      type="text"
+                    <WardSelectComponent
+                      data={wardStore.wards}
                       value={formData.shippingAddress?.ward || ''}
-                      onChange={e => handleAddressChange(e, 'ward', 'shipping')}
-                      placeholder="Phường Võ Thị Sáu"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
+                      onChange={ward => {
+                        setFormData(prev => ({
+                          ...prev,
+                          shippingAddress: {
+                            ...(prev.shippingAddress || { province: '', ward: '', specificAddress: '' }),
+                            ward: ward?.id || '',
+                          },
+                        }))
+                      }}
+                      isDisabled={!formData.shippingAddress?.province}
+                      isLoading={wardStore.isLoading}
                     />
                   </div>
                   <div>

@@ -19,8 +19,8 @@ const ProductCard = ({ products }: ProductCardProps) => {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {products.map((product) => (
-        <div>
+      {products.map((product, index) => (
+        <div key={index}>
           <div className="w-full h-48 rounded-lg overflow-hidden hover:scale-105 transition-transform cursor-pointer">
             <img
               src={product.image}

@@ -6,6 +6,8 @@ import AuthStore from './AuthStore'
 import CategoryStore from './CategoryStore'
 import PageStore from './PageStore'
 import OrderStore from './OrderStore'
+import WardStore from './WardStore'
+import ProvinceStore from './ProvinceStore'
 
 class RootStore {
   commonStore: CommonStore
@@ -15,6 +17,8 @@ class RootStore {
   categoryStore: CategoryStore
   pageStore: PageStore
   orderStore: OrderStore
+  wardStore: WardStore
+  provinceStore: ProvinceStore
 
   constructor() {
     this.commonStore = new CommonStore(this)
@@ -24,6 +28,8 @@ class RootStore {
     this.categoryStore = new CategoryStore(this)
     this.pageStore = new PageStore(this)
     this.orderStore = new OrderStore(this)
+    this.wardStore = new WardStore(this)
+    this.provinceStore = new ProvinceStore(this)
     
     makeAutoObservable(this)
   }
