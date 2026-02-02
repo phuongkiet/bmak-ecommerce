@@ -6,7 +6,8 @@ import { useStore } from '@/store'
 import { Plus, Trash2, MoveUp, MoveDown, Image as ImageIcon, Type, Save, Layout, ShoppingBag, ArrowLeft } from 'lucide-react'
 
 // Import types
-import type { PageSection, HeroSlide, ProductCarouselConfig } from '@/store/PageStore'
+import type { PageSection } from '@/store/PageStore'
+import { HeroSlideDto, ProductCarouselConfigDto } from '@/models/Page'
 
 interface SelectOption {
   value: string
@@ -26,15 +27,27 @@ const AdminPages = observer(() => {
     pageStore.loadPages()
   }, [pageStore])
 
-  // 2. Sync dữ liệu từ store vào local state khi chọn trang
-  const currentPage = pageType ? pageStore.getPageBySlug(pageType) : null
-  
+  // 2. Load chi tiết page khi chọn slug
   useEffect(() => {
-    if (currentPage) {
-      // Deep clone để ngắt tham chiếu, giúp edit thoải mái không ảnh hưởng store ngay
-      setLocalSections(JSON.parse(JSON.stringify(currentPage.sections)))
+    if (pageType && !currentPage) {
+      pageStore.getPageBySlugFromApi(pageType)
     }
-  }, [currentPage])
+  }, [pageType, pageStore])
+
+  // 3. Lấy page từ store (có thể là summary hoặc detail tùy lúc)
+  const currentPageSummary = pageType ? pageStore.getPageBySlug(pageType) : null
+  const currentPageDetail = pageStore.selectedPage
+  
+  // Dùng detail nếu có, không thì dùng summary
+  const currentPage = currentPageDetail || currentPageSummary
+  
+  // 4. Sync dữ liệu từ store vào local state khi chọn trang
+  useEffect(() => {
+    if (currentPageDetail && currentPageDetail.sections) {
+      // Deep clone để ngắt tham chiếu
+      setLocalSections(JSON.parse(JSON.stringify(currentPageDetail.sections)))
+    }
+  }, [currentPageDetail])
 
   // --- Logic Thêm/Sửa/Xóa Section ---
 
@@ -88,7 +101,7 @@ const AdminPages = observer(() => {
   const addHeroSlide = (sectionId: string) => {
     const section = localSections.find((s) => s.id === sectionId)
     if (section && section.heroSlides) {
-      const newSlide: HeroSlide = {
+      const newSlide: HeroSlideDto = {
         id: `slide_${Date.now()}`,
         image: '',
         title: 'Slide mới',
@@ -111,7 +124,7 @@ const AdminPages = observer(() => {
     }
   }
 
-  const updateHeroSlide = (sectionId: string, slideId: string, updates: Partial<HeroSlide>) => {
+  const updateHeroSlide = (sectionId: string, slideId: string, updates: Partial<HeroSlideDto>) => {
     const section = localSections.find((s) => s.id === sectionId)
     if (section?.heroSlides) {
       updateSection(sectionId, {
@@ -130,10 +143,18 @@ const AdminPages = observer(() => {
     callback(fakeUrl)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (currentPage) {
-      pageStore.updatePage(currentPage.id, localSections)
-      alert('Đã lưu cấu hình trang thành công!')
+      try {
+        const success = await pageStore.savePage(currentPage.id, localSections)
+        if (success) {
+          alert('Đã lưu cấu hình trang thành công!')
+        } else {
+          alert('Lỗi khi lưu trang: ' + (pageStore.error || 'Unknown error'))
+        }
+      } catch (error) {
+        alert('Lỗi: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      }
     }
   }
 
@@ -142,33 +163,109 @@ const AdminPages = observer(() => {
     return (
       <div className="p-6">
         <h1 className="text-3xl font-bold mb-6 text-gray-800">Quản lý giao diện</h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {pageStore.pages.map((page) => (
-            <div
-              key={page.id}
-              onClick={() => navigate(`/admin/pages/${page.slug}`)}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-primary-300 transition-all group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                 <div className="p-3 bg-primary-50 text-primary-600 rounded-lg group-hover:bg-primary-600 group-hover:text-white transition-colors">
-                    <Layout size={24} />
-                 </div>
-                 <span className="text-xs font-semibold bg-gray-100 px-2 py-1 rounded text-gray-600">{page.slug}</span>
-              </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">{page.title}</h2>
-              <p className="text-gray-500 text-sm">
-                Đang có {page.sections.length} thành phần (sections)
-              </p>
+        
+        {/* Loading State */}
+        {pageStore.isLoading && pageStore.pages.length === 0 && (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Đang tải danh sách trang...</p>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+        
+        {/* Error State */}
+        {pageStore.error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-700">❌ Lỗi: {pageStore.error}</p>
+          </div>
+        )}
+        
+        {/* Empty State */}
+        {!pageStore.isLoading && pageStore.pages.length === 0 && !pageStore.error && (
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-12 text-center">
+            <Layout className="mx-auto text-gray-300 mb-4" size={48} />
+            <p className="text-gray-600 font-medium">Chưa có trang nào</p>
+            <p className="text-gray-500 text-sm mt-2">Hãy tạo trang mới từ backend</p>
+          </div>
+        )}
+        
+        {/* Pages Grid */}
+        {pageStore.pages.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {pageStore.pages.map((page) => (
+              <div
+                key={page.id}
+                onClick={() => navigate(`/admin/pages/${page.slug}`)}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-primary-300 transition-all group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                   <div className="p-3 bg-primary-50 text-primary-600 rounded-lg group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                      <Layout size={24} />
+                   </div>
+                   <span className="text-xs font-semibold bg-gray-100 px-2 py-1 rounded text-gray-600">{page.slug}</span>
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">{page.title}</h2>
+                <p className="text-gray-500 text-sm">
+                  {page.description || 'Chưa có mô tả'}
+                </p>
+                <p className="text-gray-400 text-xs mt-2">
+                  Cập nhật: {new Date(page.updatedAt).toLocaleDateString('vi-VN')}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
 
   // --- RENDER TRANG CHỈNH SỬA CHI TIẾT ---
+  
+  // Loading state
+  if (pageStore.isLoading && !currentPageDetail) {
+    return (
+      <div className="p-6 flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải dữ liệu trang...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Error state
+  if (pageStore.error && !currentPageDetail) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <p className="text-red-700 font-semibold mb-4">❌ Lỗi tải trang</p>
+          <p className="text-red-600 mb-4">{pageStore.error}</p>
+          <button
+            onClick={() => navigate('/admin/pages')}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Quay lại
+          </button>
+        </div>
+      </div>
+    )
+  }
+  
   if (!currentPage) {
-    return <div className="p-6 text-red-500">Trang không tồn tại hoặc chưa được tải.</div>
+    return (
+      <div className="p-6">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
+          <p className="text-gray-600 font-medium mb-4">Trang không tồn tại</p>
+          <button
+            onClick={() => navigate('/admin/pages')}
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            Quay lại danh sách
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -186,10 +283,20 @@ const AdminPages = observer(() => {
         </div>
         <button
           onClick={handleSave}
-          className="bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 font-bold shadow-lg shadow-primary-200"
+          disabled={pageStore.isLoading}
+          className="bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 font-bold shadow-lg shadow-primary-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save size={20} />
-          Lưu thay đổi
+          {pageStore.isLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              Đang lưu...
+            </>
+          ) : (
+            <>
+              <Save size={20} />
+              Lưu thay đổi
+            </>
+          )}
         </button>
       </div>
 
@@ -351,7 +458,7 @@ const AdminPages = observer(() => {
                                     { value: 'category', label: 'Theo Danh mục' },
                                 ]}
                                 onChange={(opt: SingleValue<SelectOption>) => {
-                                    if(opt) updateSection(section.id, { carouselConfig: { ...section.carouselConfig!, listType: opt.value as ProductCarouselConfig['listType'] } })
+                                    if(opt) updateSection(section.id, { carouselConfig: { ...section.carouselConfig!, listType: opt.value as ProductCarouselConfigDto['listType'] } })
                                 }}
                             />
                         </div>

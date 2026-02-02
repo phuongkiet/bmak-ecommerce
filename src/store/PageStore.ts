@@ -1,112 +1,36 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 import RootStore from './RootStore'
+import * as pageApi from '@/agent/api/pageApi'
+import type { CreatePageCommand, PageDto, PageSectionDto, PageSummaryDto, UpdatePageCommand } from '@/models/Page'
 
-// 1. Interfaces
-export interface HeroSlide {
-  id: string
-  image: string
-  title: string
-  subtitle?: string
-  badge?: string
-  buttonText?: string
-  buttonLink?: string
-}
+// Type alias cho Page store
+export type PageSection = PageSectionDto
+export interface Page extends PageDto {}
 
-export interface ProductCarouselConfig {
-  listType: 'tag' | 'category' | 'newest' | 'bestseller' | 'featured'
-  tag?: string
-  title: string
-  limit?: number
-}
-
-export interface PageSection {
-  id: string
-  type: 'hero' | 'text' | 'image' | 'text-image' | 'product-carousel'
-  content?: string
-  imageUrl?: string
-  imagePosition?: 'left' | 'right'
-  heroSlides?: HeroSlide[]
-  carouselConfig?: ProductCarouselConfig
-}
-
-export interface Page {
-  id: string
-  slug: string
-  title: string
-  description?: string
-  sections: PageSection[]
-}
-
-// 2. Mock Data (Dữ liệu mẫu ban đầu)
-const INITIAL_PAGES: Page[] = [
-  {
-    id: '1',
-    slug: 'home',
-    title: 'Trang chủ',
-    sections: [
-      {
-        id: 'sec_home_1',
-        type: 'hero',
-        heroSlides: [
-          {
-            id: 'slide_1',
-            image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=80',
-            title: 'Khám phá bộ sưu tập',
-            subtitle: 'Sản phẩm tuyệt vời mùa hè này',
-            badge: 'Mới nhất',
-            buttonText: 'Mua ngay',
-            buttonLink: '/products'
-          }
-        ]
-      },
-      {
-        id: 'sec_home_2',
-        type: 'product-carousel',
-        carouselConfig: {
-          title: 'Sản phẩm bán chạy',
-          listType: 'bestseller',
-          limit: 8
-        }
-      },
-      {
-        id: 'sec_home_3',
-        type: 'text-image',
-        content: '<h2>Về chúng tôi</h2><p>Chúng tôi cung cấp những sản phẩm chất lượng nhất...</p>',
-        imageUrl: 'https://images.unsplash.com/photo-1556740758-90de274247d4?w=800&q=80',
-        imagePosition: 'right'
-      }
-    ]
-  },
-  {
-    id: '2',
-    slug: 'about',
-    title: 'Giới thiệu',
-    sections: [
-      {
-        id: 'sec_about_1',
-        type: 'hero',
-        heroSlides: [
-          {
-            id: 'slide_about_1',
-            image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80',
-            title: 'Câu chuyện thương hiệu',
-            subtitle: 'Hành trình 10 năm phát triển'
-          }
-        ]
-      },
-      {
-        id: 'sec_about_2',
-        type: 'text',
-        content: '<h3>Sứ mệnh của chúng tôi</h3><p>Mang đến trải nghiệm mua sắm tuyệt vời nhất cho khách hàng...</p>'
-      }
-    ]
-  }
-]
+// // 2. Mock Data (Dữ liệu mẫu ban đầu)
+// const INITIAL_PAGES: PageSummaryDto[] = [
+//   {
+//     id: 1,
+//     slug: 'home',
+//     title: 'Trang chủ',
+//     description: 'Trang chủ của cửa hàng',
+//     status: 'Published' as PageStatusType,
+//     updatedAt: new Date().toISOString()
+//   },
+//   {
+//     id: 2,
+//     slug: 'about',
+//     title: 'Giới thiệu',
+//     description: 'Trang giới thiệu về cửa hàng',
+//     status: 'Published' as PageStatusType,
+//     updatedAt: new Date().toISOString()
+//   }
+// ]
 
 class PageStore {
   // Khởi tạo pages với dữ liệu mẫu ngay lập tức
-  pages: Page[] = INITIAL_PAGES
-  selectedPage: Page | null = null
+  pages: PageSummaryDto[] = []
+  selectedPage: PageDto | null = null
   isLoading: boolean = false
   error: string | null = null
   rootStore: RootStore
@@ -116,15 +40,23 @@ class PageStore {
     makeAutoObservable(this)
   }
 
-  // Giả lập load pages (reset về mock data nếu cần)
+  // Load pages từ API
   async loadPages(): Promise<void> {
     this.isLoading = true
+    this.error = null
     try {
-      // Trong thực tế sẽ gọi API ở đây
-      await new Promise(resolve => setTimeout(resolve, 500)); // Fake delay
+      const result = await pageApi.getPages()
       runInAction(() => {
-        if (this.pages.length === 0) {
-           this.pages = INITIAL_PAGES;
+        if (result.isSuccess && result.value) {
+          // Backend trả về object có items array, cần extract
+          const items = (result.value as any).items || result.value
+          const pagesList = Array.isArray(items) ? items : [items]
+          this.pages = pagesList.map((item: any) => ({
+            ...item,
+            updatedAt: item.updatedAt || new Date().toISOString()
+          }))
+        } else {
+          this.error = result.error || 'Không thể tải được danh sách trang'
         }
         this.isLoading = false
       })
@@ -136,24 +68,127 @@ class PageStore {
     }
   }
 
-  getPageBySlug(slug: string): Page | undefined {
+  // Lấy chi tiết page từ API theo slug
+  async getPageBySlugFromApi(slug: string): Promise<PageDto | null> {
+    this.isLoading = true
+    this.error = null
+    try {
+      const result = await pageApi.getPageBySlug(slug)
+      runInAction(() => {
+        if (result.isSuccess && result.value) {
+          this.selectedPage = result.value
+        } else {
+          this.error = result.error || 'Failed to load page'
+        }
+        this.isLoading = false
+      })
+      return result.isSuccess ? result.value || null : null
+    } catch (error) {
+      runInAction(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to load page'
+        this.isLoading = false
+      })
+      return null
+    }
+  }
+
+  // Tìm page summary theo slug (từ local cache)
+  getPageBySlug(slug: string): PageSummaryDto | undefined {
     return this.pages.find(page => page.slug === slug)
   }
 
-  // Update trang
-  updatePage(pageId: string, newSections: PageSection[]): void {
-    const pageIndex = this.pages.findIndex(p => p.id === pageId)
-    if (pageIndex !== -1) {
+  // Lưu page lên server (cập nhật)
+  async savePage(pageId: number, newSections: PageSection[]): Promise<boolean> {
+    const pageSummary = this.pages.find(p => p.id === pageId)
+    if (!pageSummary) {
+      this.error = 'Page not found'
+      return false
+    }
+
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const updateCommand: UpdatePageCommand = {
+        id: pageId,
+        slug: pageSummary.slug,
+        title: pageSummary.title,
+        description: pageSummary.description,
+        sections: newSections,
+        isPublished: pageSummary.status
+      }
+
+      const result = await pageApi.updatePage(updateCommand)
+
       runInAction(() => {
-        // Tạo bản copy sâu để tránh lỗi tham chiếu MobX strict mode
-        const updatedPage = { ...this.pages[pageIndex], sections: newSections };
-        this.pages[pageIndex] = updatedPage;
-        
-        // Cập nhật selectedPage nếu đang chọn đúng trang đó
-        if (this.selectedPage?.id === pageId) {
-          this.selectedPage = updatedPage;
+        if (result.isSuccess) {
+          // Cập nhật local state
+          if (this.selectedPage?.id === pageId) {
+            this.selectedPage = {
+              ...this.selectedPage,
+              sections: newSections
+            }
+          }
+        } else {
+          this.error = result.error || 'Failed to save page'
         }
-      });
+        this.isLoading = false
+      })
+
+      return result.isSuccess
+    } catch (error) {
+      runInAction(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to save page'
+        this.isLoading = false
+      })
+      return false
+    }
+  }
+
+  // Tạo page mới
+  async createNewPage(slug: string, title: string, description?: string): Promise<string | null> {
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const createCommand: CreatePageCommand = {
+        slug,
+        title,
+        description,
+        sections: []
+      }
+
+      const result = await pageApi.createPage(createCommand)
+
+      runInAction(() => {
+        if (result.isSuccess) {
+          // Reload pages sau khi tạo thành công
+          this.loadPages()
+        } else {
+          this.error = result.error || 'Failed to create page'
+        }
+        this.isLoading = false
+      })
+
+      return result.isSuccess ? (result.value?.slug ?? null) : null
+    } catch (error) {
+      runInAction(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to create page'
+        this.isLoading = false
+      })
+      return null
+    }
+  }
+
+  // Update trang (lưu local state - dùng cho editing trước khi save)
+  updatePageLocally(pageId: number, newSections: PageSection[]): void {
+    if (this.selectedPage?.id === pageId) {
+      runInAction(() => {
+        this.selectedPage = {
+          ...this.selectedPage!,
+          sections: newSections
+        }
+      })
     }
   }
 }

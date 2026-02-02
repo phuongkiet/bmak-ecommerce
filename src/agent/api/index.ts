@@ -5,4 +5,5 @@ export * from './authApi'
 export * from './cartApi'
 export * from './orderApi'
 export * from './categoryApi'
+export * from './pageApi'
 

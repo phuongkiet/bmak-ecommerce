@@ -2,10 +2,16 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:7228/api'
 
-export interface ApiResponse<T> {
-  data: T
-  message?: string
-  success: boolean
+export interface ApiResponse<T = unknown> {
+  isSuccess: boolean
+  value?: T
+  error?: string
+}
+
+export interface ApiResponseList<T = unknown> {
+  isSuccess: boolean
+  value?: T[]
+  error?: string
 }
 
 export interface ApiError {
