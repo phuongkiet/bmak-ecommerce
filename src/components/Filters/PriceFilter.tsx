@@ -8,12 +8,12 @@ interface PriceFilterProps {
 }
 
 const PriceFilter = ({ min, max, onChange }: PriceFilterProps) => {
-  const [value, setValue] = useState<number[]>([min, max]);
+  const [value, setValue] = useState<number>(max);
 
   useEffect(() => {
     // Chỉ update khi min/max hợp lệ (không phải 0/0)
     if (min > 0 || max > 0) {
-      setValue([min, max]);
+      setValue(max);
     }
   }, [min, max]);
   
@@ -28,7 +28,7 @@ const PriceFilter = ({ min, max, onChange }: PriceFilterProps) => {
   }
 
   const handleChange = (_event: Event, newValue: number | number[]) => {
-    setValue(newValue as number[]);
+    setValue(newValue as number);
   };
 
   const handleChangeCommitted = (
@@ -36,7 +36,7 @@ const PriceFilter = ({ min, max, onChange }: PriceFilterProps) => {
     newValue: number | number[],
   ) => {
     // Chỉ gọi API filter khi người dùng đã kéo xong
-    onChange(newValue as number[]);
+    onChange([min, newValue as number]);
   };
   return (
     <div className="w-full">

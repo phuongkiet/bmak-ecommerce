@@ -14,7 +14,7 @@ export const getProducts = async (): Promise<ProductDto[]> => {
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<ProductDto[]>).data || []
+  return (response as ApiResponse<ProductDto[]>).value || []
 }
 
 export const getProductById = async (id: number): Promise<ProductDto> => {
@@ -23,7 +23,7 @@ export const getProductById = async (id: number): Promise<ProductDto> => {
   if ('id' in response && 'name' in response) {
     return response as ProductDto
   }
-  return (response as ApiResponse<ProductDto>).data
+  return (response as ApiResponse<ProductDto>).value || {} as ProductDto
 }
 
 export const getProductsByCategory = async (categoryId: number): Promise<ProductDto[]> => {
@@ -32,7 +32,7 @@ export const getProductsByCategory = async (categoryId: number): Promise<Product
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<ProductDto[]>).data || []
+  return (response as ApiResponse<ProductDto[]>).value || []
 }
 
 export const searchProducts = async (query: string): Promise<ProductDto[]> => {
@@ -41,7 +41,7 @@ export const searchProducts = async (query: string): Promise<ProductDto[]> => {
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<ProductDto[]>).data || []
+  return (response as ApiResponse<ProductDto[]>).value || []
 }
 
 export const getProductCategories = async (): Promise<ProductCategory[]> => {
@@ -50,7 +50,7 @@ export const getProductCategories = async (): Promise<ProductCategory[]> => {
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<ProductCategory[]>).data || []
+  return (response as ApiResponse<ProductCategory[]>).value || []
 }
 
 // export const getProductsByTag = async (tag: string): Promise<ProductDto[]> => {
@@ -74,7 +74,7 @@ export const getTopSellingProducts = async (): Promise<TopSellingProduct[]> => {
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<TopSellingProduct[]>).data || []
+  return (response as ApiResponse<TopSellingProduct[]>).value || []
 }
 
 // New: GET /api/products với paging & filter
@@ -86,12 +86,19 @@ export const getProductsPaged = async (
   const builder = new ProductSpecParamsBuilder(params)
   const query = builder.toURLSearchParams()
 
-  const response = await apiClient.get<ProductListResponse>(`/products?${query.toString()}`)
+  const response = await apiClient.get<ApiResponse<ProductListResponse> | ProductListResponse>(
+    `/products?${query.toString()}`
+  )
 
   // Response từ backend bao gồm:
   // - products: { items: ProductSummaryDto[], pageIndex, pageSize, totalCount, totalPages }
   // - filters: { minPrice, maxPrice, attributes: FilterGroupDto[] }
-  return response
+  // Có thể bọc trong ApiResponse { value, isSuccess, message }
+  if ('value' in (response as ApiResponse<ProductListResponse>)) {
+    return (response as ApiResponse<ProductListResponse>).value as ProductListResponse
+  }
+
+  return response as ProductListResponse
 }
 
 // POST: /api/products
@@ -104,6 +111,6 @@ export const createProduct = async (
   if (typeof response === 'number') {
     return response
   }
-  return (response as ApiResponse<number>).data
+  return (response as ApiResponse<number>).value || 0
 }
 

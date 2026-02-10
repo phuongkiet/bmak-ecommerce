@@ -10,7 +10,7 @@ export const getAttributes = async (): Promise<Attribute[]> => {
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<Attribute[]>).data || []
+  return (response as ApiResponse<Attribute[]>).value || []
 }
 
 // POST: /api/attributes
@@ -21,6 +21,6 @@ export const createAttribute = async (command: CreateAttributeCommand): Promise<
   if (typeof response === 'number') {
     return response
   }
-  return (response as ApiResponse<number>).data
+  return (response as ApiResponse<number>).value || 0
 }
 

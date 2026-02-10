@@ -8,6 +8,9 @@ const rootStore = new RootStore()
 
 // Setup token getter for apiClient
 apiClient.setTokenGetter(() => rootStore.commonStore.getToken())
+apiClient.setRefreshTokenGetter(() => rootStore.commonStore.getRefreshToken())
+apiClient.setTokenSetter((t: string | null) => rootStore.commonStore.setToken(t))
+apiClient.setRefreshTokenSetter((t: string | null) => rootStore.commonStore.setRefreshToken(t))
 
 // Tạo React Context
 const StoreContext = createContext<RootStore | null>(null)

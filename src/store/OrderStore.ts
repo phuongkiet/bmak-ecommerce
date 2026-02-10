@@ -22,7 +22,20 @@ class OrderStore {
     this.error = null
 
     try {
-      const result = await orderApi.createOrder(data)
+      // Normalize paymentMethod to numeric enum expected by backend
+      const paymentMethodMap: Record<string, number> = {
+        COD: 1,
+        Banking: 2,
+        VNPAY: 3,
+      }
+
+      const payload: any = { ...data }
+      if (typeof data.paymentMethod === 'string') {
+        const mapped = paymentMethodMap[data.paymentMethod] || (isNaN(Number(data.paymentMethod)) ? undefined : Number(data.paymentMethod))
+        if (mapped !== undefined) payload.paymentMethod = mapped
+      }
+
+      const result = await orderApi.createOrder(payload)
       
       runInAction(() => {
         this.isLoading = false
@@ -52,6 +65,7 @@ class OrderStore {
 
     try {
       const result = await orderApi.getOrders(params)
+      console.log('API returned orders:', result)
       runInAction(() => {
         this.orders = result;
         console.log('Fetched orders:', this.orders);

@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ColorFilter from "@/components/Filters/ColorFilter";
 import OriginFilter from "@/components/Filters/OriginFilter";
 import PriceFilter from "@/components/Filters/PriceFilter";
-import SizeFilter from "@/components/Filters/SizeFilter";
 import SurfaceFilter from "@/components/Filters/SurfaceFilter";
 import ProductCard from "@/components/Products/ProductCard";
+import PageSectionsRenderer from "@/components/PageSectionsRenderer";
 import { useStore } from "@/store";
 import { observer } from "mobx-react-lite";
+import SizeFilter from "@/components/Filters/SizeFilter";
 
 const Products = observer(() => {
-  const { productStore } = useStore();
+  const { productStore, pageStore } = useStore();
   const { productSummaries, minPrice, maxPrice, filters, isLoading, error } = productStore;
   
   // Filter state
@@ -24,6 +25,12 @@ const Products = observer(() => {
   useEffect(() => {
     productStore.fetchProductsPaged({ pageIndex: 1, pageSize: 12 });
   }, [productStore]);
+
+  useEffect(() => {
+    pageStore.getPageBySlugFromApi('products')
+  }, [pageStore])
+
+  const productsPage = pageStore.selectedPage?.slug === 'products' ? pageStore.selectedPage : undefined
 
   // Refetch when filters change
   const applyFilters = (newFilters: typeof selectedFilters) => {
@@ -42,6 +49,23 @@ const Products = observer(() => {
     image: p.thumbnail || "/placeholder-product.png",
     price: p.price ?? p.originalPrice ?? 0,
   }));
+
+  const derivedPriceRange = useMemo(() => {
+    if (products.length === 0) {
+      return { min: 0, max: 0 };
+    }
+    const prices = products.map((p) => p.price).filter((p) => p > 0);
+    if (prices.length === 0) {
+      return { min: 0, max: 0 };
+    }
+    return {
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+    };
+  }, [products]);
+
+  const effectiveMinPrice = (minPrice > 0 || maxPrice > 0) ? minPrice : derivedPriceRange.min;
+  const effectiveMaxPrice = (minPrice > 0 || maxPrice > 0) ? maxPrice : derivedPriceRange.max;
 
   const handlePriceChange = (range: number[]) => {
     applyFilters({
@@ -79,6 +103,7 @@ const Products = observer(() => {
   
   return (
     <>
+      <PageSectionsRenderer sections={productsPage?.sections} />
       <div className="grid grid-cols-12 mx-20">
         <div className="col-span-3 container mx-auto px-4 py-8">
           <div className="flex justify-between items-center mb-3">
@@ -95,8 +120,8 @@ const Products = observer(() => {
           <div className="space-y-6">
             {/* Giá */}
             <PriceFilter
-              min={minPrice}
-              max={maxPrice}
+              min={effectiveMinPrice}
+              max={effectiveMaxPrice}
               onChange={handlePriceChange}
             />
             <hr />
@@ -104,6 +129,7 @@ const Products = observer(() => {
             <ColorFilter
               options={filters?.attributes.find((a) => a.code === "COLOR")?.options || []}
               selectedColor={selectedFilters.color}
+              loading={isLoading}
               onChange={handleColorChange}
             />
             <hr />
@@ -114,6 +140,7 @@ const Products = observer(() => {
             <SizeFilter
               options={filters?.attributes.find((a) => a.code === "SIZE")?.options || []}
               selectedSize={selectedFilters.size}
+              loading={isLoading}
               onChange={handleSizeChange}
             />
             <hr />

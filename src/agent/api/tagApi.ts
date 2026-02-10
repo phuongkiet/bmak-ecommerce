@@ -10,7 +10,7 @@ export const getTags = async (): Promise<TagDto[]> => {
   if (Array.isArray(response)) {
     return response
   }
-  return (response as ApiResponse<TagDto[]>).data || []
+  return (response as ApiResponse<TagDto[]>).value || []
 }
 
 // POST: /api/tags
@@ -21,6 +21,6 @@ export const createTag = async (command: CreateTagCommand): Promise<number> => {
   if (typeof response === 'number') {
     return response
   }
-  return (response as ApiResponse<number>).data
+  return (response as ApiResponse<number>).value || 0
 }
 

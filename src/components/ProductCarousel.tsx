@@ -28,6 +28,7 @@ export interface ProductCarouselProps {
   // Các loại list cần fetch
   listType?: 'tag' | 'category' | 'newest' | 'bestseller' | 'featured'
   tag?: string
+  limit?: number
 }
 
 const ProductCarousel = ({ 
@@ -40,6 +41,7 @@ const ProductCarousel = ({
   viewAllLink = '/products',
   listType = 'newest',
   tag,
+  limit,
   className
 }: ProductCarouselProps) => {
   const { productStore } = useStore()
@@ -64,6 +66,9 @@ const ProductCarousel = ({
       setIsLoading(true)
       try {
         let rawData: any[] = []
+        const pageSize = limit && limit > 0 ? limit : 8
+        const normalizedTag = tag?.trim()
+        const isTagIdsString = !!normalizedTag && /^[0-9,\s]+$/.test(normalizedTag)
 
         // Gọi các hàm mới trong ProductStore
         switch (listType) {
@@ -71,7 +76,7 @@ const ProductCarousel = ({
              // Gọi hàm loadProducts (không ảnh hưởng global state)
              rawData = await productStore.loadProducts({ 
                 pageIndex: 1, 
-                pageSize: 8, 
+               pageSize, 
                 sort: 'dateDesc' 
              })
              break
@@ -85,29 +90,37 @@ const ProductCarousel = ({
              // Giả sử có logic featured (ví dụ sort theo giá hoặc tiêu chí khác)
              rawData = await productStore.loadProducts({ 
                 pageIndex: 1, 
-                pageSize: 8, 
+               pageSize, 
                 sort: 'priceDesc' // Ví dụ
              })
              break
 
-          // case 'tag':
-          //    if (tag) {
-          //       rawData = await productStore.fetchProductsByTag(tag)
-          //    }
-          //    break
+           case 'tag':
+             if (normalizedTag) {
+               rawData = await productStore.loadProducts({
+                pageIndex: 1,
+                pageSize,
+                ...(isTagIdsString ? { tagIdsString: normalizedTag } : { search: normalizedTag })
+               })
+             }
+             break
 
           case 'category':
              // Logic category (tận dụng loadProducts với params search/filter)
              // Ở đây cần BE hỗ trợ filter theo CategoryId hoặc Slug trong params
              rawData = await productStore.loadProducts({ 
-                pageIndex: 1, 
-                pageSize: 8,
-                search: tag // Tạm thời giả định tag là tên category
+               pageIndex: 1, 
+               pageSize,
+               ...(normalizedTag ? { categorySlug: normalizedTag } : {})
              })
              break
 
           default:
-             rawData = await productStore.loadProducts({ pageIndex: 1, pageSize: 8 })
+             rawData = await productStore.loadProducts({ pageIndex: 1, pageSize })
+        }
+
+        if (limit && rawData.length > limit) {
+          rawData = rawData.slice(0, limit)
         }
 
         // Map về UI Model của Carousel (fallback an toàn để tránh undefined)
@@ -134,7 +147,7 @@ const ProductCarousel = ({
     }
 
     fetchData()
-  }, [listType, tag, initialProducts, productStore])
+  }, [listType, tag, limit, initialProducts, productStore])
 
   // --- PHẦN RENDER GIỮ NGUYÊN ---
   // (Copy phần render UI, scroll logic của bạn vào đây)

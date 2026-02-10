@@ -1,51 +1,19 @@
 import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
-import { ShoppingBag, Truck, Shield, RefreshCw, ArrowRight } from 'lucide-react'
+import { ShoppingBag, Truck, Shield, RefreshCw } from 'lucide-react'
 import { useStore } from '@/store'
-import HeroCarousel from '@/components/HeroCarousel'
 import CategoryCarousel from '@/components/CategoryCarousel'
-import ProductCarousel from '@/components/ProductCarousel'
-
-// 1. Định nghĩa các Interface chi tiết cho các phần tử con
-interface HeroSlideData {
-  id: string | number
-  image: string
-  title: string
-  subtitle?: string
-  badge?: string
-  buttonText?: string
-  buttonLink?: string
-}
-
-interface CarouselConfigData {
-  listType?: 'tag' | 'category' | 'newest' | 'bestseller' | 'featured'
-  tag?: string
-  title: string
-}
-
-// 2. Định nghĩa một type mở rộng bao gồm tất cả các trường có thể có
-// Để TypeScript hiểu được các thuộc tính riêng biệt của từng section
-interface ExtendedSection {
-  id: number | string
-  type: string
-  content?: string
-  imageUrl?: string
-  imagePosition?: 'left' | 'right'
-  heroSlides?: HeroSlideData[]
-  carouselConfig?: CarouselConfigData
-}
+import HeroCarousel from '@/components/HeroCarousel'
+import PageSectionsRenderer from '@/components/PageSectionsRenderer'
 
 const Home = observer(() => {
   const { pageStore } = useStore()
 
   useEffect(() => {
-    // Reload pages to get latest data
-    pageStore.loadPages()
+    pageStore.getPageBySlugFromApi('home')
   }, [pageStore])
 
-  // Get page inside render to ensure reactivity
-  const homePage = pageStore.getPageBySlug('home')
+  const homePage = pageStore.selectedPage?.slug === 'home' ? pageStore.selectedPage : undefined
 
   const categories = [
     { id: 1, name: 'Điện tử', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&q=80', count: 120 },
@@ -58,183 +26,38 @@ const Home = observer(() => {
     { id: 8, name: 'Nội thất', image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&q=80', count: 55 },
   ]
 
-  // Render sections from PageStore
-  const renderSections = () => {
-    if (!homePage || !homePage.sections || homePage.sections.length === 0) {
-      // Fallback to default content
-      return (
-        <>
-          <section className="relative text-white overflow-hidden h-[600px] md:h-[700px]">
-            <div className="absolute inset-0 z-0">
-              <HeroCarousel
-                slides={[
-                  {
-                    id: 1,
-                    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=80',
-                    title: 'Khám phá bộ sưu tập',
-                    subtitle: 'Sản phẩm tuyệt vời',
-                  },
-                ]}
-                autoPlay={true}
-                interval={5000}
-              />
-            </div>
-            <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/60 via-black/40 to-black/60"></div>
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 relative z-20 h-full flex items-center">
-              <div className="max-w-3xl w-full">
-                <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight break-words">
-                  Khám phá bộ sưu tập
-                  <span className="text-primary-400 block">sản phẩm tuyệt vời</span>
-                </h1>
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
-          </section>
-        </>
-      )
-    }
-
-    return homePage.sections.map((s) => {
-      // 3. Ép kiểu s sang ExtendedSection để TS nhận diện được heroSlides và carouselConfig
-      const section = s as unknown as ExtendedSection
-
-      // Hero Section
-      if (section.type === 'hero' && section.heroSlides && section.heroSlides.length > 0) {
-        const heroSlides = section.heroSlides.map((slide: HeroSlideData, idx: number) => ({
-          // Xử lý id an toàn hơn
-          id: typeof slide.id === 'string' ? parseInt(slide.id) : slide.id || idx + 1,
-          image: slide.image,
-          title: slide.title,
-          subtitle: slide.subtitle,
-        }))
-
-        return (
-          <section
-            key={section.id}
-            className="relative text-white overflow-hidden h-[600px] md:h-[700px]"
-          >
-            <div className="absolute inset-0 z-0">
-              <HeroCarousel slides={heroSlides} autoPlay={true} interval={5000} />
-            </div>
-            <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/60 via-black/40 to-black/60"></div>
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 relative z-20 h-full flex items-center">
-              <div className="max-w-3xl w-full">
-                {section.heroSlides[0]?.badge && (
-                  <div className="inline-block px-4 py-2 bg-primary-500 rounded-full text-sm font-medium mb-6">
-                    {section.heroSlides[0].badge}
-                  </div>
-                )}
-                <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight break-words">
-                  {section.heroSlides[0]?.title || ''}
-                  {section.heroSlides[0]?.subtitle && (
-                    <span className="text-primary-400 block">
-                      {section.heroSlides[0].subtitle}
-                    </span>
-                  )}
-                </h1>
-                {section.heroSlides[0]?.buttonText && (
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Link
-                      to={section.heroSlides[0].buttonLink || '/products'}
-                      className="inline-flex items-center justify-center bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg shadow-primary-500/50"
-                    >
-                      {section.heroSlides[0].buttonText}
-                      <ArrowRight className="ml-2" size={20} />
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
-          </section>
-        )
-      }
-
-      // Product Carousel Section
-      if (section.type === 'product-carousel' && section.carouselConfig) {
-        return (
-          <ProductCarousel
-            key={section.id}
-            listType={section.carouselConfig.listType || 'newest'}
-            title={section.carouselConfig.title}
-            showViewAll={true}
-            itemsPerView={4}
-            autoScroll={false}
-            useMockData={false}
-          />
-        )
-      }
-
-      // Text Section
-      if (section.type === 'text' && section.content) {
-        return (
-          <section key={section.id} className="py-16 bg-white">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
-            </div>
-          </section>
-        )
-      }
-
-      // Image Section
-      if (section.type === 'image' && section.imageUrl) {
-        return (
-          <section key={section.id} className="py-16 bg-white">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <img
-                src={section.imageUrl}
-                alt="Section"
-                className="w-full rounded-lg"
-              />
-            </div>
-          </section>
-        )
-      }
-
-      // Text + Image Section
-      if (section.type === 'text-image') {
-        return (
-          <section key={section.id} className="py-16 bg-white">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <div
-                className={`grid grid-cols-1 md:grid-cols-2 gap-8 ${
-                  section.imagePosition === 'right' ? 'md:flex-row-reverse' : ''
-                }`}
-              >
-                {section.imagePosition === 'left' && section.imageUrl && (
-                  <div>
-                    <img
-                      src={section.imageUrl}
-                      alt="Section"
-                      className="w-full rounded-lg"
-                    />
-                  </div>
-                )}
-                {section.content && (
-                  <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
-                )}
-                {section.imagePosition === 'right' && section.imageUrl && (
-                  <div>
-                    <img
-                      src={section.imageUrl}
-                      alt="Section"
-                      className="w-full rounded-lg"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        )
-      }
-
-      return null
-    })
-  }
+  const fallback = (
+    <section className="relative text-white overflow-hidden h-[600px] md:h-[700px]">
+      <div className="absolute inset-0 z-0">
+        <HeroCarousel
+          slides={[
+            {
+              id: 1,
+              image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=80',
+              title: 'Khám phá bộ sưu tập',
+              subtitle: 'Sản phẩm tuyệt vời',
+            },
+          ]}
+          autoPlay={true}
+          interval={5000}
+        />
+      </div>
+      <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/60 via-black/40 to-black/60"></div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 relative z-20 h-full flex items-center">
+        <div className="max-w-3xl w-full">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight break-words">
+            Khám phá bộ sưu tập
+            <span className="text-primary-400 block">sản phẩm tuyệt vời</span>
+          </h1>
+        </div>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
+    </section>
+  )
 
   return (
     <div className="min-h-screen">
-      {renderSections()}
+      <PageSectionsRenderer sections={homePage?.sections} fallback={fallback} />
 
       {/* Features Section - Always show */}
       <section className="py-16 bg-white border-b border-gray-200">

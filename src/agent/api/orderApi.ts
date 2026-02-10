@@ -24,33 +24,57 @@ export const getOrders = async (params: OrderParams): Promise<PaginatedResult<Or
     if (params.sort) queryParams.append('sort', params.sort)
 
     // 2. Gọi API
-    // Lưu ý: response.data lúc này là kiểu PagedList<OrderSummaryDto> chứ không phải OrderSummaryDto[]
     const response = await apiClient.getWithHeaders<any>(`/Orders?${queryParams.toString()}`)
 
-    // 3. Xử lý Metadata (Ưu tiên Header -> Fallback xuống Body)
-    const paginationHeader = response.headers.get('pagination') || response.headers.get('Pagination');
-    
-    let metaData;
-    
+    // response.data có thể là:
+    // - ApiResponse<PaginatedResponse>
+    // - PaginatedResponse
+    // - trực tiếp array OrderSummaryDto[]
+    const raw = response.data
+
+    // unwrap ApiResponse if present
+    const body = raw && typeof raw === 'object' && 'value' in raw ? raw.value : raw
+
+    // items extraction
+    let items: OrderSummaryDto[] = []
+    if (Array.isArray(body)) {
+      items = body
+    } else if (body && 'items' in body && Array.isArray(body.items)) {
+      items = body.items
+    }
+
+    // Metadata: prefer header 'pagination' if present, else extract from body (support pageIndex/pageNumber)
+    const paginationHeader = response.headers.get('pagination') || response.headers.get('Pagination')
+    let metaData
     if (paginationHeader) {
-        metaData = JSON.parse(paginationHeader);
-    } else {
-        // Fallback: Lấy metadata từ Body (vì Backend trả về PagedList object)
+      try {
+        const parsed = JSON.parse(paginationHeader)
         metaData = {
-            currentPage: response.data.pageNumber || params.pageNumber,
-            totalPages: response.data.totalPages || 0,
-            itemsPerPage: response.data.pageSize || params.pageSize,
-            totalItems: response.data.totalCount || 0
-        };
+          currentPage: parsed.currentPage ?? parsed.pageIndex ?? parsed.pageNumber ?? params.pageNumber,
+          totalPages: parsed.totalPages ?? 0,
+          itemsPerPage: parsed.itemsPerPage ?? parsed.pageSize ?? params.pageSize,
+          totalItems: parsed.totalItems ?? parsed.totalCount ?? 0,
+        }
+      } catch {
+        metaData = {
+          currentPage: params.pageNumber,
+          totalPages: 0,
+          itemsPerPage: params.pageSize,
+          totalItems: 0,
+        }
+      }
+    } else {
+      metaData = {
+        currentPage: (body && (body.pageIndex ?? body.pageNumber)) ?? params.pageNumber,
+        totalPages: (body && (body.totalPages ?? 0)) ?? 0,
+        itemsPerPage: (body && (body.pageSize ?? params.pageSize)) ?? params.pageSize,
+        totalItems: (body && (body.totalCount ?? 0)) ?? 0,
+      }
     }
 
     return {
-        // ✅ FIX QUAN TRỌNG: Phải chọc vào .items
-        // Kiểm tra an toàn: nếu response.data là mảng (trường hợp cũ) thì dùng luôn, 
-        // còn nếu là object (PagedList) thì lấy .items
-        items: Array.isArray(response.data) ? response.data : (response.data.items || []),
-        
-        metaData: metaData
+      items,
+      metaData,
     }
 }
 
@@ -60,7 +84,7 @@ export const getOrderById = async (id: number): Promise<OrderDto> => {
   if ('id' in response && 'orderCode' in response) {
     return response as OrderDto
   }
-  return (response as ApiResponse<OrderDto>).data
+  return (response as ApiResponse<OrderDto>).value as OrderDto
 }
 
 export const cancelOrder = async (id: number): Promise<OrderDto> => {
@@ -69,6 +93,6 @@ export const cancelOrder = async (id: number): Promise<OrderDto> => {
   if ('id' in response && 'orderCode' in response) {
     return response as OrderDto
   }
-  return (response as ApiResponse<OrderDto>).data
+  return (response as ApiResponse<OrderDto>).value as OrderDto
 }
 

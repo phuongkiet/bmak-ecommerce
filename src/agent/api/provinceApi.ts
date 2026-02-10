@@ -1,30 +1,29 @@
-import { ApiResponse, apiClient } from './apiClient'
+import { apiClient } from './apiClient'
 import { ProvinceDto } from '@/models/Province'
 
-type ProvinceResult = ApiResponse<ProvinceDto> | ProvinceDto
-
-const normalizeProvince = (response: ProvinceResult): ProvinceDto => {
-  return 'data' in response ? response.data : response
-}
-
 export const getProvinces = async (): Promise<ProvinceDto[]> => {
-  const response = await apiClient.get<any>(`/Province`)
-  
-  // Handle case where response is wrapped in { items: [...] } (paginated response)
-  if ('items' in response && Array.isArray(response.items)) {
+  const response = await apiClient.get<any>('/Province')
+
+  // Case: ApiResponse with paginated value: { value: { items: [...] } }
+  if (response && 'value' in response && response.value && 'items' in response.value && Array.isArray(response.value.items)) {
+    return response.value.items
+  }
+
+  // Case: direct paginated response: { items: [...] }
+  if (response && 'items' in response && Array.isArray(response.items)) {
     return response.items
   }
-  
-  // Handle case where response is wrapped in { data: [...] }
-  if ('data' in response && Array.isArray(response.data)) {
-    return response.data
+
+  // Case: ApiResponse wrapping an array: { value: [...] }
+  if (response && 'value' in response && Array.isArray(response.value)) {
+    return response.value
   }
-  
-  // Handle case where response is an array
+
+  // Case: plain array
   if (Array.isArray(response)) {
-    return response.map(normalizeProvince)
+    return response
   }
-  
+
   return []
 }
 

@@ -1,18 +1,22 @@
 import { Checkbox } from "@mui/material";
-import type { FilterOptionDto } from "@/models/Filter";
+import type { FilterItemDto } from "@/models/Filter";
+import { observer } from "mobx-react-lite";
 
 interface SizeFilterProps {
-  options: FilterOptionDto[];
+  options: FilterItemDto[];
   selectedSize?: string;
   onChange: (size: string) => void;
+  loading?: boolean;
 }
 
-const SizeFilter = ({ options, selectedSize, onChange }: SizeFilterProps) => {
+const SizeFilter = ({ options, selectedSize, onChange, loading }: SizeFilterProps) => {
   if (options.length === 0) {
     return (
       <div>
         <h4 className="text-sm font-bold">Kích thước</h4>
-        <p className="text-xs text-gray-400 mt-2">Không có tùy chọn</p>
+        <p className="text-xs text-gray-400 mt-2">
+          {loading ? 'Đang tải...' : 'Không có tùy chọn'}
+        </p>
       </div>
     );
   }
@@ -43,4 +47,4 @@ const SizeFilter = ({ options, selectedSize, onChange }: SizeFilterProps) => {
   );
 };
 
-export default SizeFilter;
+export default observer(SizeFilter);

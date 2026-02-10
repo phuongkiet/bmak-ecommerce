@@ -74,6 +74,7 @@ class PageStore {
     this.error = null
     try {
       const result = await pageApi.getPageBySlug(slug)
+      console.log('Fetched page by slug:', result)
       runInAction(() => {
         if (result.isSuccess && result.value) {
           this.selectedPage = result.value
@@ -100,7 +101,18 @@ class PageStore {
   // Lưu page lên server (cập nhật)
   async savePage(pageId: number, newSections: PageSection[]): Promise<boolean> {
     const pageSummary = this.pages.find(p => p.id === pageId)
-    if (!pageSummary) {
+
+    // Fallback to selectedPage when pages list doesn't contain the page (e.g. opened directly)
+    const source = pageSummary || (this.selectedPage && this.selectedPage.id === pageId ? {
+      id: this.selectedPage.id,
+      slug: this.selectedPage.slug,
+      title: this.selectedPage.title,
+      description: this.selectedPage.description,
+      status: this.selectedPage.status,
+      updatedAt: this.selectedPage.updatedAt
+    } as any : undefined)
+
+    if (!source) {
       this.error = 'Page not found'
       return false
     }
@@ -111,11 +123,11 @@ class PageStore {
     try {
       const updateCommand: UpdatePageCommand = {
         id: pageId,
-        slug: pageSummary.slug,
-        title: pageSummary.title,
-        description: pageSummary.description,
+        slug: source.slug,
+        title: source.title,
+        description: source.description ?? '',
         sections: newSections,
-        isPublished: pageSummary.status
+        isPublished: source.status
       }
 
       const result = await pageApi.updatePage(updateCommand)

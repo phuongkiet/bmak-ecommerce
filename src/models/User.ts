@@ -1,27 +1,48 @@
-export interface User {
-  id: number
-  name: string
-  email: string
-  phone?: string
-  address?: string
-  avatar?: string
-  role?: 'user' | 'admin'
-  createdAt?: string
+export interface UserDto {
+  id: number;
+  userName: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string;
+  avatarUrl?: string;
+  isDeleted: boolean;
+  createdAt: Date;
+  roles: string[];
 }
 
-export interface LoginCredentials {
-  email: string
-  password: string
+export interface UserSummaryDto {
+  id: number;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  isDeleted: boolean;
+  roles: string;
 }
 
-export interface RegisterData {
-  name: string
-  email: string
-  password: string
-  phone?: string
+export interface CreateNewUserRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  roles: string[];
 }
 
+export interface DeleteUserRequest {
+  userId: number;
+  isHardDelete: boolean;
+}
 
+export interface UpdateUserRequest {
+  id: number;
+  fullName: string;
+  phoneNumber: string;
+  roles: string[];
+  isActive: boolean;
+}
 
-
-
+export interface UserSpecParams {
+  pageIndex?: number
+  pageSize?: number
+  search?: string
+  sortOrder?: string
+}

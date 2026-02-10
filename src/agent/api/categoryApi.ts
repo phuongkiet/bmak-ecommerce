@@ -30,7 +30,7 @@ export const getCategories = async (params?: CategorySpecParams): Promise<PagedL
   if ('items' in response && 'pageIndex' in response) {
     return response as PagedList<CategoryDto>
   }
-  return (response as ApiResponse<PagedList<CategoryDto>>).data
+  return (response as ApiResponse<PagedList<CategoryDto>>).value!
 }
 
 export const getCategoryById = async (id: number): Promise<CategoryDto> => {
@@ -40,7 +40,7 @@ export const getCategoryById = async (id: number): Promise<CategoryDto> => {
   if ('id' in response && 'name' in response) {
     return response as CategoryDto
   }
-  return (response as ApiResponse<CategoryDto>).data
+  return (response as ApiResponse<CategoryDto>).value!
 }
 
 export const createCategory = async (command: CreateCategoryCommand): Promise<number> => {
@@ -50,7 +50,7 @@ export const createCategory = async (command: CreateCategoryCommand): Promise<nu
   if (typeof response === 'number') {
     return response
   }
-  return (response as ApiResponse<number>).data
+  return (response as ApiResponse<number>).value!
 }
 
 // Helper function to get all categories (no pagination)

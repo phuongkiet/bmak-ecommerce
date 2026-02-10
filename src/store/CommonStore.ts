@@ -3,6 +3,7 @@ import RootStore from './RootStore'
 
 class CommonStore {
   token: string | null = null
+  refreshToken: string | null = null
   theme: 'light' | 'dark' = 'light'
   language: 'vi' | 'en' = 'vi'
   isLoading: boolean = false
@@ -15,6 +16,7 @@ class CommonStore {
     
     // Load token from localStorage on init
     this.loadTokenFromStorage()
+    this.loadRefreshTokenFromStorage()
     this.loadThemeFromStorage()
     this.loadLanguageFromStorage()
   }
@@ -29,8 +31,21 @@ class CommonStore {
     }
   }
 
+  setRefreshToken(token: string | null): void {
+    this.refreshToken = token
+    if (token) {
+      localStorage.setItem('refreshToken', token)
+    } else {
+      localStorage.removeItem('refreshToken')
+    }
+  }
+
   getToken(): string | null {
     return this.token
+  }
+
+  getRefreshToken(): string | null {
+    return this.refreshToken
   }
 
   clearToken(): void {
@@ -38,11 +53,21 @@ class CommonStore {
     localStorage.removeItem('token')
   }
 
+  clearRefreshToken(): void {
+    this.refreshToken = null
+    localStorage.removeItem('refreshToken')
+  }
+
   private loadTokenFromStorage(): void {
     const token = localStorage.getItem('token')
     if (token) {
       this.token = token
     }
+  }
+
+  private loadRefreshTokenFromStorage(): void {
+    const token = localStorage.getItem('refreshToken')
+    if (token) this.refreshToken = token
   }
 
   // Theme management

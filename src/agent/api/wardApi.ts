@@ -1,44 +1,34 @@
 import { ApiResponse, apiClient } from './apiClient'
 import { WardDto } from '@/models/Ward'
-type WardResult = ApiResponse<WardDto> | WardDto
 
-const normalizeWard = (response: WardResult): WardDto => {
-  return 'data' in response ? response.data : response
+export interface PaginatedResponse<T> {
+  items: T[]
+  pageIndex: number
+  pageSize: number
+  totalPages: number
+  totalCount: number
 }
 
-export const getWards = async (): Promise<WardDto[]> => {
-  const response = await apiClient.get<any>(`/Ward`)
-  
-  if ('items' in response && Array.isArray(response.items)) {
-    return response.items
+export const getWards = async (pageIndex: number = 1, pageSize: number = 50): Promise<WardDto[]> => {
+  const response = await apiClient.get<ApiResponse<PaginatedResponse<WardDto>> | PaginatedResponse<WardDto>>(`/Ward?pageIndex=${pageIndex}&pageSize=${pageSize}`)
+  // support both wrapped ApiResponse and direct paginated response
+  if ('value' in response) {
+    return response.value?.items || []
   }
-  
-  if ('data' in response && Array.isArray(response.data)) {
-    return response.data
+  if ('items' in response) {
+    return response.items || []
   }
-  
-  if (Array.isArray(response)) {
-    return response.map(normalizeWard)
-  }
-  
   return []
 }
 
-export const getWardsByProvinceId = async (provinceId: string): Promise<WardDto[]> => {
-  const response = await apiClient.get<any>(`/Ward?ProvinceId=${provinceId}`)
-  
-  if ('items' in response && Array.isArray(response.items)) {
-    return response.items
+export const getWardsByProvinceId = async (provinceId: string, pageIndex: number = 1, pageSize: number = 50): Promise<WardDto[]> => {
+  const response = await apiClient.get<ApiResponse<PaginatedResponse<WardDto>> | PaginatedResponse<WardDto>>(`/Ward?ProvinceId=${provinceId}&pageIndex=${pageIndex}&pageSize=${pageSize}`)
+  if ('value' in response) {
+    return response.value?.items || []
   }
-  
-  if ('data' in response && Array.isArray(response.data)) {
-    return response.data
+  if ('items' in response) {
+    return response.items || []
   }
-  
-  if (Array.isArray(response)) {
-    return response.map(normalizeWard)
-  }
-  
   return []
 }
 

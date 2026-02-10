@@ -1,18 +1,21 @@
-import type { FilterOptionDto } from "@/models/Filter";
+import type { FilterItemDto } from "@/models/Filter";
 import { Checkbox } from "@mui/material";
 
 interface ColorFilterProps {
-  options: FilterOptionDto[];
+  options: FilterItemDto[];
   selectedColor?: string;
   onChange: (color: string) => void;
+  loading?: boolean;
 }
 
-const ColorFilter = ({ options, selectedColor, onChange }: ColorFilterProps) => {
+const ColorFilter = ({ options, selectedColor, onChange, loading }: ColorFilterProps) => {
   if (options.length === 0) {
     return (
       <div>
         <h4 className="text-sm font-bold">Màu sắc</h4>
-        <p className="text-xs text-gray-400 mt-2">Không có tùy chọn</p>
+        <p className="text-xs text-gray-400 mt-2">
+          {loading ? 'Đang tải...' : 'Không có tùy chọn'}
+        </p>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,33 +9,36 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import type { User } from '@/models/User'
+import { UserSummaryDto } from '@/models/User'
+import { useStore } from '@/store'
+import { observer } from 'mobx-react-lite'
+import { useNavigate } from 'react-router-dom'
+import { Edit, Trash2 } from 'lucide-react'
 
-// Mock data - sẽ thay thế bằng API sau
-const mockCustomers: User[] = []
-
-const AdminCustomers = () => {
+const AdminUsers = observer(() => {
   const [sorting, setSorting] = useState<SortingState>([])
+  const { userStore } = useStore()
+  const navigate = useNavigate()
 
-  const columns = useMemo<ColumnDef<User>[]>(
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+
+  // Initial load and when pagination changes
+  useEffect(() => {
+    userStore.fetchUser({ pageIndex: pageIndex + 1, pageSize })
+  }, [pageIndex, pageSize, userStore])
+
+  const columns = useMemo<ColumnDef<UserSummaryDto>[]>(
     () => [
       {
-        accessorKey: 'name',
-        header: 'Tên khách hàng',
+        accessorKey: 'fullName',
+        header: 'Tên người dùng',
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
-            {row.original.avatar ? (
-              <img
-                src={row.original.avatar}
-                alt={row.original.name}
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-medium">
-                {row.original.name.charAt(0).toUpperCase()}
+            <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-medium">
+                {row.original.fullName.charAt(0).toUpperCase()}
               </div>
-            )}
-            <span className="text-sm font-medium text-gray-900">{row.original.name}</span>
+            <span className="text-sm font-medium text-gray-900">{row.original.fullName}</span>
           </div>
         ),
       },
@@ -47,26 +50,24 @@ const AdminCustomers = () => {
         ),
       },
       {
-        accessorKey: 'phone',
+        accessorKey: 'phoneNumber',
         header: 'Số điện thoại',
         cell: ({ row }) => (
-          <span className="text-sm text-gray-500">{row.original.phone || 'N/A'}</span>
+          <span className="text-sm text-gray-500">{row.original.phoneNumber || 'N/A'}</span>
         ),
       },
       {
-        id: 'totalOrders',
-        header: 'Tổng đơn hàng',
-        cell: () => <span className="text-sm text-gray-500">0</span>,
-      },
-      {
-        accessorKey: 'createdAt',
-        header: 'Ngày đăng ký',
-        cell: ({ row }) => (
-          <span className="text-sm text-gray-500">
-            {row.original.createdAt
-              ? new Date(row.original.createdAt).toLocaleDateString('vi-VN')
-              : 'N/A'}
-          </span>
+        id: 'actions',
+        header: 'Thao tác',
+        cell: () => (
+          <div className="flex items-center gap-2">
+            <button className="text-primary-600 hover:text-primary-900 transition-colors">
+              <Edit size={18} />
+            </button>
+            <button className="text-red-600 hover:text-red-900 transition-colors">
+              <Trash2 size={18} />
+            </button>
+          </div>
         ),
       },
     ],
@@ -74,7 +75,7 @@ const AdminCustomers = () => {
   )
 
   const table = useReactTable({
-    data: mockCustomers,
+    data: userStore.users?.items ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -83,12 +84,19 @@ const AdminCustomers = () => {
     onSortingChange: setSorting,
     state: {
       sorting,
+      pagination: { pageIndex, pageSize },
     },
+    pageCount: userStore.users?.metaData?.totalPages ?? -1,
   })
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Quản lý khách hàng</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Quản lý khách hàng</h1>
+        <div>
+          <button onClick={() => navigate('/admin/users/new')} className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700">Thêm user</button>
+        </div>
+      </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -145,33 +153,33 @@ const AdminCustomers = () => {
         </div>
 
         {/* Pagination */}
-        {table.getRowModel().rows.length > 0 && (
+        { (userStore.users && userStore.users.items.length > 0) && (
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
+                onClick={() => setPageIndex(0)}
+                disabled={pageIndex <= 0}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 {'<<'}
               </button>
               <button
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                onClick={() => setPageIndex(Math.max(0, pageIndex - 1))}
+                disabled={pageIndex <= 0}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 {'<'}
               </button>
               <button
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                onClick={() => setPageIndex(Math.min((userStore.users?.metaData.totalPages || 1) - 1, pageIndex + 1))}
+                disabled={pageIndex >= ((userStore.users?.metaData.totalPages || 1) - 1)}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 {'>'}
               </button>
               <button
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
+                onClick={() => setPageIndex((userStore.users?.metaData.totalPages || 1) - 1)}
+                disabled={pageIndex >= ((userStore.users?.metaData.totalPages || 1) - 1)}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 {'>>'}
@@ -179,19 +187,33 @@ const AdminCustomers = () => {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-700">
               <span>
-                Trang {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+                Trang {pageIndex + 1} / {userStore.users?.metaData.totalPages ?? 1}
               </span>
               <span className="text-gray-500">|</span>
               <span>
-                Hiển thị {table.getRowModel().rows.length} / {table.getRowCount()} khách hàng
+                Hiển thị {userStore.users?.items.length ?? 0} / {userStore.users?.metaData.totalItems ?? 0} khách hàng
               </span>
+              <span className="text-gray-500">|</span>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Số hàng:</label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPageIndex(0); }}
+                  className="border rounded px-2 py-1 text-sm"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
             </div>
           </div>
         )}
       </div>
     </div>
   )
-}
+})
 
-export default AdminCustomers
+export default AdminUsers
 

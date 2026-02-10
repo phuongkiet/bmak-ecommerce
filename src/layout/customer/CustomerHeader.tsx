@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ShoppingCart, User, Search, ChevronDown } from 'lucide-react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
@@ -8,6 +9,7 @@ const CustomerHeader = observer(() => {
   const { cartStore, authStore, categoryStore } = useStore()
   const location = useLocation()
   const [isProductsMenuOpen, setIsProductsMenuOpen] = useState(false)
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
 
   useEffect(() => {
     // Fetch categories when component mounts
@@ -30,6 +32,13 @@ const CustomerHeader = observer(() => {
       return location.pathname === '/'
     }
     return location.pathname.startsWith(path)
+  }
+
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await authStore.logout()
+    navigate('/')
   }
 
   return (
@@ -57,7 +66,7 @@ const CustomerHeader = observer(() => {
             </Link>
 
             <Link 
-              to="/about" 
+              to="/about-us" 
               className={`px-4 py-2 rounded-lg transition-all duration-200 ${
                 isActive('/about') && location.pathname === '/about'
                   ? 'text-primary-600 font-semibold bg-primary-50'
@@ -193,18 +202,36 @@ const CustomerHeader = observer(() => {
             
             {/* My Account */}
             {authStore.isAuthenticated ? (
-              <Link
-                to="/profile"
-                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
-              >
-                <User size={20} />
-                <span className="hidden lg:inline text-sm font-medium">
-                  {authStore.userDisplayName}
-                </span>
-              </Link>
+              <div className="relative">
+                <button
+                  onClick={() => setIsAccountMenuOpen(prev => !prev)}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                >
+                  <User size={20} />
+                  <span className="hidden lg:inline text-sm font-medium">
+                    {authStore.userDisplayName}
+                  </span>
+                </button>
+                {isAccountMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg py-2 z-50">
+                    <button
+                      onClick={() => navigate('/profile')}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                    >
+                      Tài khoản
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <Link
-                to="/login"
+                to="/sign-in"
                 className="px-4 py-2 text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all duration-200 font-medium"
               >
                 Đăng nhập

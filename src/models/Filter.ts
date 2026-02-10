@@ -5,15 +5,16 @@ export interface ProductFilterAggregationDto {
 
     // Các nhóm thuộc tính (Màu sắc, Kích thước...)
     attributes: FilterGroupDto[];
+    categories: FilterGroupDto[];
 }
 
 export interface FilterGroupDto {
     code: string; // VD: COLOR
-    label: string; // VD: Màu sắc
-    options: FilterOptionDto[];
+    name: string; // VD: Màu sắc
+    options: FilterItemDto[];
 }
 
-export interface FilterOptionDto {
+export interface FilterItemDto {
     value: string; // VD: Red
     label: string; // VD: Đỏ
     count: number; // Số lượng sản phẩm (quan trọng cho dynamic filter)
