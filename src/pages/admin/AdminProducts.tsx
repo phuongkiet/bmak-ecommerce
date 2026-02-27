@@ -93,9 +93,9 @@ const AdminProducts = observer(() => {
       {
         id: 'actions',
         header: 'Thao tác',
-        cell: () => (
+        cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <button className="text-primary-600 hover:text-primary-900 transition-colors">
+            <button className="text-primary-600 hover:text-primary-900 transition-colors" onClick={() => navigate(`/admin/products/${row.original.id}`)}>
               <Edit size={18} />
             </button>
             <button className="text-red-600 hover:text-red-900 transition-colors">

@@ -2,32 +2,45 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
-import { Upload, X, Save, ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, Save, ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import type { CreateProductCommand } from '@/models/Product'
 import Select from 'react-select'
+import CreatableSelect from 'react-select/creatable'
 import * as tagApi from '@/agent/api/tagApi'
 import type { TagDto, CreateTagCommand } from '@/models/Tag'
 import * as attributeApi from '@/agent/api/attributeApi'
 import type { Attribute } from '@/models/Attribute'
+import type { CategoryDto } from '@/models/Category'
 import { ProductAttributeCreateDto } from '@/models/ProductAttribute'
+import ImageChoser from '@/components/Images/ImageChoser'
+import MediaPicker from '@/components/Images/MediaPicker'
+import type { AppImageDto } from '@/models/Image'
 
 const AddProduct = observer(() => {
   const navigate = useNavigate()
-  const { productStore, categoryStore } = useStore()
+  const { productStore, categoryStore, tagStore, attributeValueStore } = useStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState<CreateProductCommand>({
     name: '',
     sku: '',
+    slug: '',
     basePrice: 0,
     salePrice: 0,
     salesUnit: 'Thùng',
     priceUnit: 'm²',
     conversionFactor: 1.44,
+    width: 0,
+    height: 0,
+    thickness: 0,
+    random: 0,
+    boxQuantity: 0,
     categoryId: 0,
+    categoryIds: [],
     weight: 0,
-    imageUrl: '',
+    thumbnailUrl: '',
+    imageIds: [],
     specificationsJson: '',
     isActive: true,
     tag: '',
@@ -54,6 +67,8 @@ const AddProduct = observer(() => {
     description: '',
   })
   const [isCreatingTag, setIsCreatingTag] = useState(false)
+  const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false)
+  const [productImages, setProductImages] = useState<AppImageDto[]>([])
 
   // Attributes state
   const [attributes, setAttributes] = useState<Attribute[]>([])
@@ -66,11 +81,22 @@ const AddProduct = observer(() => {
   
   // Selected attribute for adding (dropdown)
   const [selectedAttributeId, setSelectedAttributeId] = useState<number | null>(null)
+  const [attributeValueOptionsByAttributeId, setAttributeValueOptionsByAttributeId] = useState<
+    Record<number, Array<{ value: string; label: string; extraData?: string }>>
+  >({})
+
+  // Category box UI state
+  const [isCategoryBoxOpen, setIsCategoryBoxOpen] = useState(true)
+  const [categoryTab, setCategoryTab] = useState<'all' | 'popular'>('all')
 
   useEffect(() => {
     // Load categories
     if (categoryStore.categories.length === 0) {
       categoryStore.fetchCategories()
+    }
+
+    if(tagStore.tags.length === 0) {
+      tagStore.fetchTags()
     }
     
     // Load tags
@@ -78,7 +104,7 @@ const AddProduct = observer(() => {
     
     // Load attributes
     loadAttributes()
-  }, [categoryStore])
+  }, [categoryStore, tagStore])
 
   const loadAttributes = async () => {
     setIsLoadingAttributes(true)
@@ -135,6 +161,28 @@ const AddProduct = observer(() => {
     }
   }
 
+  const handleAddProductImages = (imgs: AppImageDto[]) => {
+    // append new images avoiding duplicates
+    setProductImages((prev) => {
+      const existingIds = new Set(prev.map((p) => p.id))
+      const merged = [...prev]
+      imgs.forEach((img) => {
+        if (!existingIds.has(img.id)) merged.push(img)
+      })
+      // update formData imageIds too
+      setFormData((prev) => ({ ...prev, imageIds: merged.map((m) => m.id) }))
+      return merged
+    })
+  }
+
+  const removeProductImage = (id: number) => {
+    setProductImages((prev) => {
+      const next = prev.filter((p) => p.id !== id)
+      setFormData((prevForm) => ({ ...prevForm, imageIds: next.map((m) => m.id) }))
+      return next
+    })
+  }
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -150,20 +198,46 @@ const AddProduct = observer(() => {
     }))
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
+  const handleImageChange = (payload: React.ChangeEvent<HTMLInputElement> | File[] | string | null) => {
+    // Accept either an input change event, an array of Files, or a URL string from the media picker
+    if (!payload) return
+
+    // If called with a string (URL)
+    if (typeof payload === 'string') {
+      setImagePreview(payload)
+      setFormData((prev) => ({ ...prev, imageUrl: payload }))
+      return
+    }
+
+    // If called with File[]
+    if (Array.isArray(payload)) {
+      const file = payload[0]
+      if (!file) return
       setImageFile(file)
-      // Create preview
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagePreview(reader.result as string)
-        setFormData((prev) => ({
-          ...prev,
-          imageUrl: reader.result as string, // Base64 hoặc URL
-        }))
+        setFormData((prev) => ({ ...prev, imageUrl: reader.result as string }))
       }
       reader.readAsDataURL(file)
+      return
+    }
+
+    // Otherwise assume it's an input change event
+    try {
+      const e = payload as React.ChangeEvent<HTMLInputElement>
+      const file = e.target.files?.[0]
+      if (file) {
+        setImageFile(file)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string)
+          setFormData((prev) => ({ ...prev, imageUrl: reader.result as string }))
+        }
+        reader.readAsDataURL(file)
+      }
+    } catch (err) {
+      console.error('handleImageChange: unexpected payload', err)
     }
   }
 
@@ -191,6 +265,7 @@ const AddProduct = observer(() => {
     
     const attribute = attributes.find((attr) => attr.id === selectedAttributeId)
     if (attribute) {
+      void loadAttributeValues(selectedAttributeId)
       setSelectedAttributes((prev) => [
         ...prev,
         { attributeId: selectedAttributeId, value: '', extraData: '', isOpen: true },
@@ -229,11 +304,52 @@ const AddProduct = observer(() => {
     )
   }
 
+  const loadAttributeValues = async (attributeId: number) => {
+    try {
+      await attributeValueStore.fetchAttributeValues(attributeId)
+      const values = attributeValueStore.getValuesByAttributeId(attributeId)
+      const uniqueMap = new Map<string, { value: string; label: string; extraData?: string }>()
+
+      values.forEach((item) => {
+        if (!item.value) return
+        if (!uniqueMap.has(item.value)) {
+          uniqueMap.set(item.value, {
+            value: item.value,
+            label: item.value,
+            extraData: item.extraData,
+          })
+        }
+      })
+
+      setAttributeValueOptionsByAttributeId((prev) => ({
+        ...prev,
+        [attributeId]: Array.from(uniqueMap.values()),
+      }))
+    } catch (error) {
+      console.error('Failed to load attribute values:', error)
+    }
+  }
+
+  useEffect(() => {
+    selectedAttributes.forEach((attr) => {
+      if (!attributeValueOptionsByAttributeId[attr.attributeId]) {
+        void loadAttributeValues(attr.attributeId)
+      }
+    })
+  }, [selectedAttributes, attributeValueOptionsByAttributeId])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
+      // Validate at least one category selected
+      if (!formData.categoryIds || formData.categoryIds.length === 0) {
+        alert('Vui lòng chọn ít nhất một danh mục cho sản phẩm')
+        setIsSubmitting(false)
+        return
+      }
+
       // Convert selected attributes to ProductAttributeCreateDto[]
       const productAttributes: ProductAttributeCreateDto[] = selectedAttributes
         .filter((attr) => attr.value.trim() !== '')
@@ -245,6 +361,8 @@ const AddProduct = observer(() => {
 
       const command: CreateProductCommand = {
         ...formData,
+        // Đảm bảo categoryId khớp với danh mục đầu tiên (nếu backend vẫn dùng)
+        categoryId: formData.categoryIds[0] ?? 0,
         attributes: productAttributes,
       }
 
@@ -263,10 +381,29 @@ const AddProduct = observer(() => {
     }
   }
 
-  const categoryOptions = categoryStore.categories.map((cat) => ({
-    value: cat.id,
-    label: cat.name,
-  }))
+  const buildCategoryOptions = (categories: CategoryDto[]) => {
+    const byParent = new Map<number | null, CategoryDto[]>()
+    categories.forEach((cat) => {
+      const key = cat.parentId ?? null
+      const list = byParent.get(key) || []
+      list.push(cat)
+      byParent.set(key, list)
+    })
+
+    const result: Array<{ id: number; label: string; level: number }> = []
+    const walk = (parentId: number | null, level: number) => {
+      const list = byParent.get(parentId) || []
+      list.forEach((cat) => {
+        result.push({ id: cat.id, label: cat.name, level })
+        walk(cat.id, level + 1)
+      })
+    }
+
+    walk(null, 0)
+    return result
+  }
+
+  const categoryOptions = buildCategoryOptions(categoryStore.categories)
 
   return (
     <div>
@@ -477,26 +614,6 @@ const AddProduct = observer(() => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Danh mục <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    className="react-select-container"
-                    classNamePrefix="react-select"
-                    value={categoryOptions.find((opt) => opt.value === formData.categoryId) || null}
-                    onChange={(option) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        categoryId: option?.value || 0,
-                      }))
-                    }
-                    options={categoryOptions}
-                    placeholder="Chọn danh mục"
-                    isSearchable
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Trọng lượng (kg)
                   </label>
                   <input
@@ -638,18 +755,51 @@ const AddProduct = observer(() => {
                                   <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Giá trị <span className="text-red-500">*</span>
                                   </label>
-                                  <input
-                                    type="text"
-                                    value={selectedAttr.value}
-                                    onChange={(e) =>
+                                  <CreatableSelect
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                    options={
+                                      attributeValueOptionsByAttributeId[selectedAttr.attributeId] || []
+                                    }
+                                    value={
+                                      selectedAttr.value
+                                        ? (attributeValueOptionsByAttributeId[selectedAttr.attributeId] || []).find(
+                                            (opt) => opt.value === selectedAttr.value
+                                          ) || {
+                                            value: selectedAttr.value,
+                                            label: selectedAttr.value,
+                                            extraData: selectedAttr.extraData,
+                                          }
+                                        : null
+                                    }
+                                    onChange={(option: any) => {
+                                      if (!option) {
+                                        handleAttributeValueChange(selectedAttr.attributeId, 'value', '')
+                                        handleAttributeValueChange(selectedAttr.attributeId, 'extraData', '')
+                                        return
+                                      }
                                       handleAttributeValueChange(
                                         selectedAttr.attributeId,
                                         'value',
-                                        e.target.value
+                                        option.value || ''
+                                      )
+                                      handleAttributeValueChange(
+                                        selectedAttr.attributeId,
+                                        'extraData',
+                                        option.extraData || ''
+                                      )
+                                    }}
+                                    onCreateOption={(inputValue) =>
+                                      handleAttributeValueChange(
+                                        selectedAttr.attributeId,
+                                        'value',
+                                        inputValue.trim()
                                       )
                                     }
-                                    placeholder="Nhập giá trị"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                                    placeholder="Chọn hoặc nhập giá trị"
+                                    isClearable
+                                    isSearchable
+                                    formatCreateLabel={(inputValue) => `Tạo mới: ${inputValue}`}
                                   />
                                 </div>
                                 <div>
@@ -692,7 +842,7 @@ const AddProduct = observer(() => {
           <div className="space-y-6">
             {/* Image Upload */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Hình ảnh sản phẩm</h2>
+              <h2 className="text-xl font-semibold mb-4">Hình ảnh bìa sản phẩm</h2>
               
               {imagePreview ? (
                 <div className="relative">
@@ -710,21 +860,131 @@ const AddProduct = observer(() => {
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-10 h-10 mb-3 text-gray-400" />
-                    <p className="mb-2 text-sm text-gray-500">
-                      <span className="font-semibold">Click để upload</span> hoặc kéo thả
-                    </p>
-                    <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 5MB)</p>
+                <ImageChoser onDrop={(files) => handleImageChange(files)} onSelectImage={(url) => handleImageChange(url)} />
+              )}
+            </div>
+
+            {/* Product gallery images */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Hình sản phẩm</h2>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setIsGalleryPickerOpen(true)} className="px-3 py-2 bg-primary-600 text-white rounded-lg">Thêm ảnh</button>
+                </div>
+              </div>
+
+              {productImages.length === 0 ? (
+                <div className="text-sm text-gray-500">Chưa có ảnh nào. Thêm ảnh cho sản phẩm.</div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  {productImages.map((img) => (
+                    <div key={img.id} className="relative rounded overflow-hidden border">
+                      <img src={img.url} alt={img.fileName} className="w-full h-full object-cover" />
+                      <button onClick={() => removeProductImage(img.id)} className="absolute top-1 right-1 bg-white/90 rounded-full px-1 text-red-600 text-xs font-semibold hover:bg-white/75">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Category Selection */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl font-semibold">Danh mục sản phẩm</h2>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryBoxOpen((prev) => !prev)}
+                  className="p-1 rounded hover:bg-gray-100 text-gray-500"
+                >
+                  {isCategoryBoxOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+              </div>
+
+              {isCategoryBoxOpen && (
+                <>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Chọn danh mục cha hoặc danh mục con <span className="text-red-500">*</span>
+                  </label>
+
+                  <div className="border border-gray-200 rounded-lg">
+                    {/* Tabs */}
+                    <div className="flex border-b border-gray-200 text-sm">
+                      <button
+                        type="button"
+                        onClick={() => setCategoryTab('all')}
+                        className={`flex-1 px-3 py-2 text-center ${
+                          categoryTab === 'all'
+                            ? 'bg-white font-medium text-gray-900 border-b-2 border-primary-500'
+                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        Tất cả danh mục
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCategoryTab('popular')}
+                        className={`flex-1 px-3 py-2 text-center ${
+                          categoryTab === 'popular'
+                            ? 'bg-white font-medium text-gray-900 border-b-2 border-primary-500'
+                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        Dùng nhiều nhất
+                      </button>
+                    </div>
+
+                    {/* Category list */}
+                    <div className="max-h-64 overflow-y-auto p-2 space-y-1 bg-white">
+                      {categoryOptions.length === 0 ? (
+                        <div className="text-xs text-gray-500 px-1 py-2">
+                          Chưa có danh mục. Hãy tạo danh mục trước.
+                        </div>
+                      ) : (
+                        categoryOptions.map((opt) => (
+                          <label
+                            key={opt.id}
+                            className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              name="categoryIds"
+                              checked={formData.categoryIds?.includes(opt.id) || false}
+                              onChange={() =>
+                                setFormData((prev) => {
+                                  const current = prev.categoryIds || []
+                                  const exists = current.includes(opt.id)
+                                  const nextIds = exists
+                                    ? current.filter((id) => id !== opt.id)
+                                    : [...current, opt.id]
+                                  return {
+                                    ...prev,
+                                    categoryIds: nextIds,
+                                    categoryId: nextIds[0] ?? 0,
+                                  }
+                                })
+                              }
+                              className="w-4 h-4 text-primary-600 border-gray-300"
+                            />
+                            <span
+                              className="text-gray-800"
+                              style={{ paddingLeft: opt.level * 12 }}
+                            >
+                              {opt.label}
+                            </span>
+                          </label>
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/categories')}
+                    className="mt-2 text-xs text-primary-600 hover:text-primary-700"
+                  >
+                    + Thêm danh mục mới
+                  </button>
+                </>
               )}
             </div>
 
@@ -735,8 +995,8 @@ const AddProduct = observer(() => {
               {isLoadingTags ? (
                 <div className="text-center py-4 text-gray-500">Đang tải...</div>
               ) : (
-                <>
-                  <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
+                <div className='space-y-4'>
+                  <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto p-2 space-y-1">
                     {tags.map((tag) => (
                       <label
                         key={tag.id}
@@ -763,13 +1023,12 @@ const AddProduct = observer(() => {
                     <Plus size={18} />
                     <span className="text-sm font-medium">Thêm tag mới</span>
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Submit Button */}
         <div className="mt-6 flex justify-end gap-4">
           <button
             type="button"
@@ -789,7 +1048,6 @@ const AddProduct = observer(() => {
         </div>
       </form>
 
-      {/* Tag Modal */}
       {isTagModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
@@ -864,8 +1122,19 @@ const AddProduct = observer(() => {
           </div>
         </div>
       )}
+      {isGalleryPickerOpen && (
+        <MediaPicker
+          onClose={() => setIsGalleryPickerOpen(false)}
+          multiSelect={true}
+          onSelect={(imgs: any) => {
+            if (Array.isArray(imgs)) handleAddProductImages(imgs)
+            else handleAddProductImages([imgs])
+            setIsGalleryPickerOpen(false)
+          }}
+        />
+      )}
     </div>
-  )
+    )
 })
 
 export default AddProduct

@@ -10,10 +10,10 @@ const Home = observer(() => {
   const { pageStore } = useStore()
 
   useEffect(() => {
-    pageStore.getPageBySlugFromApi('home')
+    pageStore.getPageBySlugFromApi('trang-chu')
   }, [pageStore])
 
-  const homePage = pageStore.selectedPage?.slug === 'home' ? pageStore.selectedPage : undefined
+  const homePage = pageStore.selectedPage?.slug === 'trang-chu' ? pageStore.selectedPage : undefined
 
   const categories = [
     { id: 1, name: 'Điện tử', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&q=80', count: 120 },

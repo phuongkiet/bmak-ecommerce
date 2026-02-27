@@ -114,3 +114,16 @@ export const createProduct = async (
   return (response as ApiResponse<number>).value || 0
 }
 
+// PUT: /api/products/{id}
+export const updateProduct = async (
+  id: number,
+  command: import('@/models/Product').UpdateProductCommand & { id?: number; categoryIds?: number[] }
+): Promise<number> => {
+  const response = await apiClient.put<ApiResponse<number> | number>(`/products/${id}`, command)
+
+  if (typeof response === 'number') {
+    return response
+  }
+  return (response as ApiResponse<number>).value || 0
+}
+

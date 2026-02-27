@@ -6,4 +6,5 @@ export * from './cartApi'
 export * from './orderApi'
 export * from './categoryApi'
 export * from './pageApi'
+export * from './attributeValueApi'
 

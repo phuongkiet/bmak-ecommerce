@@ -2,6 +2,7 @@ import { makeAutoObservable, runInAction } from 'mobx'
 import RootStore from './RootStore'
 import * as authApi from '@/agent/api/authApi'
 import { AuthResponse } from '@/models/Auth'
+import { apiClient } from '@/agent/api/apiClient'
 
 class AuthStore {
   user: AuthResponse | null = null
@@ -13,13 +14,25 @@ class AuthStore {
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
     makeAutoObservable(this)
+
+    apiClient.setTokenGetter(() => this.rootStore.commonStore.getToken());
+    apiClient.setRefreshTokenGetter(() => this.rootStore.commonStore.getRefreshToken());
+    
+    // Khi refresh thành công, apiClient tự động cập nhật token vào Store
+    apiClient.setTokenSetter((token) => {
+      if(token) this.rootStore.commonStore.setToken(token);
+    });
+    apiClient.setRefreshTokenSetter((token) => {
+      if(token) this.rootStore.commonStore.setRefreshToken(token);
+    });
     
     // Load user from localStorage on init
     this.loadUserFromStorage()
+    void this.validateSessionOnStartup()
   }
 
   get userDisplayName(): string {
-    return this.user?.fullName || 'Guest'
+    return this.user?.fullName || 'Khách hàng'
   }
 
   async login(email: string, password: string): Promise<void> {
@@ -33,19 +46,6 @@ class AuthStore {
 
       runInAction(() => {
         if (auth) {
-          // Map AuthResponse -> User model
-          // Ensure role is strictly 'user' | 'admin' | undefined
-          let role: 'user' | 'admin' | undefined = undefined
-          if ((auth as any).roles && Array.isArray((auth as any).roles)) {
-            const rolesArr = (auth as any).roles.map((r: any) => String(r).toLowerCase())
-            role = rolesArr.includes('admin') ? 'admin' : 'user'
-          } else if ((auth as any).role !== undefined && (auth as any).role !== null) {
-            const r = String((auth as any).role).toLowerCase()
-            role = r === 'admin' ? 'admin' : 'user'
-          } else {
-            role = 'user'
-          }
-
           this.user = {
             id: (auth as any).id,
             fullName: (auth as any).fullName || (auth as any).name || '',
@@ -133,6 +133,97 @@ class AuthStore {
       }
     } catch (error) {
       console.error('Error loading user from storage:', error)
+    }
+  }
+
+  private isJwtExpired(token: string): boolean {
+    try {
+      const payloadPart = token.split('.')[1]
+      if (!payloadPart) return true
+
+      const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+      const payload = JSON.parse(atob(padded))
+
+      const expValue = typeof payload?.exp === 'number' ? payload.exp : Number(payload?.exp)
+      if (!Number.isFinite(expValue)) return true
+
+      const expMs = expValue > 1_000_000_000_000 ? expValue : expValue * 1000
+      return Date.now() >= expMs
+    } catch {
+      return true
+    }
+  }
+
+  private clearLocalSession(): void {
+    this.user = null
+    this.isAuthenticated = false
+    this.rootStore.commonStore.clearToken()
+    this.rootStore.commonStore.clearRefreshToken()
+    this.clearUserFromStorage()
+  }
+
+  private async validateSessionOnStartup(): Promise<void> {
+    const accessToken = this.rootStore.commonStore.getToken()
+    const refreshToken = this.rootStore.commonStore.getRefreshToken()
+
+    console.debug('[auth] startup check', {
+      hasAccessToken: Boolean(accessToken),
+      hasRefreshToken: Boolean(refreshToken),
+    })
+
+    if (!accessToken) {
+      this.clearLocalSession()
+      return
+    }
+
+    if (!this.isJwtExpired(accessToken)) {
+      console.debug('[auth] access token still valid')
+      return
+    }
+
+    console.debug('[auth] access token expired, attempting refresh')
+
+    if (!refreshToken) {
+      this.clearLocalSession()
+      return
+    }
+
+    try {
+      const response = await authApi.refreshToken(accessToken, refreshToken)
+      const auth = (response && typeof response === 'object' && 'value' in response) ? (response as any).value : response
+
+      const newAccessToken = (auth as any)?.token || (auth as any)?.accessToken || null
+      const newRefreshToken = (auth as any)?.refreshToken || refreshToken
+
+      if (!newAccessToken) {
+        console.debug('[auth] refresh failed: missing access token in response')
+        runInAction(() => {
+          this.clearLocalSession()
+        })
+        return
+      }
+
+      runInAction(() => {
+        this.rootStore.commonStore.setToken(newAccessToken)
+        this.rootStore.commonStore.setRefreshToken(newRefreshToken)
+
+        if (this.user) {
+          this.user = {
+            ...this.user,
+            token: newAccessToken,
+            refreshToken: newRefreshToken,
+          }
+          this.isAuthenticated = true
+          this.saveUserToStorage()
+        }
+      })
+      console.debug('[auth] refresh success')
+    } catch {
+      console.debug('[auth] refresh failed: request error')
+      runInAction(() => {
+        this.clearLocalSession()
+      })
     }
   }
 

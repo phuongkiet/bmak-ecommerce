@@ -174,7 +174,7 @@ class ProductStore {
         stockQuantity: 0,
         images: [],
         attributes: [],
-        categoryId: 0,
+        categoryIds: [],
         categoryName: '',
       }))
     } catch (error) {
@@ -233,6 +233,28 @@ class ProductStore {
     } catch (error) {
       runInAction(() => {
         this.error = error instanceof Error ? error.message : 'Failed to create product'
+        this.isLoading = false
+      })
+      throw error
+    }
+  }
+
+  async updateProduct(
+    id: number,
+    command: import('@/models/Product').UpdateProductCommand & { id?: number; categoryIds?: number[] }
+  ): Promise<number> {
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const productId = await productApi.updateProduct(id, command)
+      runInAction(() => {
+        this.isLoading = false
+      })
+      return productId
+    } catch (error) {
+      runInAction(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to update product'
         this.isLoading = false
       })
       throw error

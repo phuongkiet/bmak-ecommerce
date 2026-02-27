@@ -24,3 +24,19 @@ export const createTag = async (command: CreateTagCommand): Promise<number> => {
   return (response as ApiResponse<number>).value || 0
 }
 
+export const updateTag = async (id: number, command: CreateTagCommand): Promise<ApiResponse<boolean>> => {
+  const response = await apiClient.put<ApiResponse<boolean>>(`/tags/${id}`, command)
+  if(response.isSuccess == false) {
+    return { value: false, isSuccess: false, error: 'Failed to update tag' }
+  }
+  return { value: true, isSuccess: true } 
+}
+
+export const deleteTag = async (id: number): Promise<ApiResponse<boolean>> => {
+  const response = await apiClient.delete<ApiResponse<boolean>>(`/tags/${id}`)
+  if(response.isSuccess == false) {
+    return { value: false, isSuccess: false, error: 'Failed to delete tag' }
+  }
+  return { value: true, isSuccess: true }
+}
+

@@ -33,6 +33,8 @@ export interface ProductCarouselConfigDto {
   title: string
   tag?: string
   limit?: number
+  autoPlay?: boolean
+  intervalSeconds?: number
 }
 
 // ============================================

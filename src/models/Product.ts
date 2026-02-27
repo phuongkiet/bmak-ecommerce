@@ -16,6 +16,13 @@ export interface ProductDto {
   priceUnit: string; // "m2", "Viên"
   conversionFactor: number; // Hệ số quy đổi (VD: 0.36)
 
+  width?: number;
+  height?: number;
+  weight?: number;
+  random?: number;
+  boxQuantity?: number;
+  thickness?: number;
+
   // Giá & Kho
   price: number; // SalePrice
   originalPrice?: number; // BasePrice
@@ -29,7 +36,7 @@ export interface ProductDto {
   attributes: ProductAttributeDto[];
 
   // Danh mục
-  categoryId: number;
+  categoryIds: number[];
   categoryName: string;
 }
 
@@ -44,14 +51,24 @@ export interface ProductCategory {
 export interface CreateProductCommand {
   name: string
   sku: string
+  slug: string
   basePrice: number
   salePrice: number
   salesUnit: string
   priceUnit: string
   conversionFactor: number
+  width?: number;
+  height?: number;
+  random?: number;
+  boxQuantity?: number;
+  thickness?: number;
+  // Danh mục chính (có thể dùng categoryIds[0])
   categoryId: number
+  // Hỗ trợ gán nhiều danh mục cho sản phẩm
+  categoryIds?: number[]
   weight: number
-  imageUrl: string
+  thumbnailUrl?: string
+  imageIds?: number[]
   specificationsJson?: string
   isActive: boolean
   tag?: string
@@ -132,5 +149,36 @@ export interface ProductSummaryDto {
 export interface ProductListResponse {
   products: PagedList<ProductSummaryDto>; // List sản phẩm + pagination info
   filters: ProductFilterAggregationDto;   // Aggregated filter options
+}
+
+export interface UpdateProductAttributeDto{
+  attributeId: number;
+  value: string;
+}
+
+export interface UpdateProductCommand{
+  name: string;
+  sku: string;
+  slug: string;
+  basePrice: number;
+  salePrice: number;
+  salesUnit: string;
+  priceUnit?: string;
+  conversionFactor: number;
+  width?: number;
+  height?: number;
+  random?: number;
+  boxQuantity?: number;
+  thickness?: number;
+  categoryIds: number[];
+  saleStartDate?: string // ISO date string
+  saleEndDate?: string // ISO date string
+  weight?: number;
+  thumbnailUrl?: string;
+  imageIds?: number[];
+  specificationsJson?: string;
+  isActive?: boolean;
+  attributes: UpdateProductAttributeDto[];
+  tagIds: number[]; 
 }
 

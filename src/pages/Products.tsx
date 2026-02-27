@@ -19,6 +19,8 @@ const Products = observer(() => {
     maxPrice?: number;
     color?: string;
     size?: string;
+    brand?: string;
+    surface?: string;
   }>({});
 
   // Fetch products on mount
@@ -88,6 +90,20 @@ const Products = observer(() => {
       size,
     });
   };
+
+  const handleOriginChange = (origin: string) => {
+    applyFilters({
+      ...selectedFilters,
+      brand: origin,
+    });
+  };
+
+  const handleSurfaceChange = (surface: string) => {
+    applyFilters({
+      ...selectedFilters,
+      surface,
+    });
+  };
   
   // Reset all filters
   const resetFilters = () => {
@@ -105,9 +121,9 @@ const Products = observer(() => {
     <>
       <PageSectionsRenderer sections={productsPage?.sections} />
       <div className="grid grid-cols-12 mx-20">
-        <div className="col-span-3 container mx-auto px-4 py-8">
+        <div className="col-span-2 container mx-auto px-4 py-8">
           <div className="flex justify-between items-center mb-3">
-            <h1 className="text-3xl font-bold">Bộ lọc</h1>
+            <h1 className="text-2xl font-bold">Bộ lọc</h1>
             {hasActiveFilters && (
               <button
                 onClick={resetFilters}
@@ -134,7 +150,16 @@ const Products = observer(() => {
             />
             <hr />
             {/* Xuất xứ */}
-            <OriginFilter />
+            <OriginFilter
+              options={
+                filters?.attributes.find((a) => a.code === "ORIGIN")?.options ||
+                filters?.attributes.find((a) => a.code === "BRAND")?.options ||
+                []
+              }
+              selectedOrigin={selectedFilters.brand}
+              loading={isLoading}
+              onChange={handleOriginChange}
+            />
             <hr />
             {/* Kích thước */}
             <SizeFilter
@@ -145,11 +170,21 @@ const Products = observer(() => {
             />
             <hr />
             {/* Bề mặt */}
-            <SurfaceFilter />
+            <SurfaceFilter
+              options={
+                filters?.attributes.find((a) => a.code === "SURFACE")?.options ||
+                filters?.attributes.find((a) => a.code === "FINISH")?.options ||
+                filters?.attributes.find((a) => a.code === "TEXTURE")?.options ||
+                []
+              }
+              selectedSurface={selectedFilters.surface}
+              loading={isLoading}
+              onChange={handleSurfaceChange}
+            />
             <hr />
           </div>
         </div>
-        <div className="col-span-9 container mx-auto px-4 py-8">
+        <div className="col-span-10 container mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold mb-8">Tất cả sản phẩm</h1>
           {isLoading ? (
             <div className="py-16 text-center text-gray-500">Đang tải sản phẩm...</div>

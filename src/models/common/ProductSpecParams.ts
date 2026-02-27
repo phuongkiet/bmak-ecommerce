@@ -23,6 +23,7 @@ export interface ProductSpecParams {
   color?: string;
   size?: string;
   brand?: string;
+  surface?: string;
 
   // --- FILTER TAGS ---
   tagIdsString?: string; // Dạng string: "1,2,3"
@@ -47,6 +48,7 @@ export class ProductSpecParamsBuilder {
       color: params?.color,
       size: params?.size,
       brand: params?.brand,
+      surface: params?.surface,
       tagIdsString: params?.tagIdsString,
     };
   }
@@ -90,6 +92,7 @@ export class ProductSpecParamsBuilder {
     if (this.params.color) params.append('color', this.params.color);
     if (this.params.size) params.append('size', this.params.size);
     if (this.params.brand) params.append('brand', this.params.brand);
+    if (this.params.surface) params.append('surface', this.params.surface);
     if (this.params.tagIdsString) params.append('tagIdsString', this.params.tagIdsString);
 
     return params;

@@ -36,7 +36,7 @@ const ColorFilter = ({ options, selectedColor, onChange, loading }: ColorFilterP
               />
             </div>
             <div className="col-span-9 flex items-center justify-between">
-              <div className="text-sm font-bold">{option.label}</div>
+              <div className="text-xs font-bold">{option.label}</div>
               <span className="text-xs text-gray-400">({option.count})</span>
             </div>
           </div>

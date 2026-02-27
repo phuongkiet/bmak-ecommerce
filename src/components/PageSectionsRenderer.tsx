@@ -78,7 +78,8 @@ const PageSectionsRenderer = ({ sections, fallback }: PageSectionsRendererProps)
               limit={section.carouselConfig.limit}
               showViewAll={true}
               itemsPerView={4}
-              autoScroll={false}
+              autoScroll={section.carouselConfig?.autoPlay ?? false}
+              interval={(section.carouselConfig?.intervalSeconds ?? 5) * 1000}
               useMockData={false}
             />
           )

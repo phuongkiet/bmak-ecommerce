@@ -10,6 +10,9 @@ import WardStore from './WardStore'
 import ProvinceStore from './ProvinceStore'
 import UserStore from './UserStore'
 import MediaStore from './MediaStore'
+import TagStore from './TagStore'
+import AttributeStore from './AttributeStore'
+import AttributeValueStore from './AttributeValueStore'
 
 class RootStore {
   commonStore: CommonStore
@@ -23,6 +26,9 @@ class RootStore {
   provinceStore: ProvinceStore
   userStore: UserStore
   mediaStore: MediaStore
+  tagStore: TagStore
+  attributeStore: AttributeStore
+  attributeValueStore: AttributeValueStore
 
   constructor() {
     this.commonStore = new CommonStore(this)
@@ -36,6 +42,9 @@ class RootStore {
     this.provinceStore = new ProvinceStore(this)
     this.userStore = new UserStore(this)
     this.mediaStore = new MediaStore(this)
+    this.tagStore = new TagStore(this)
+    this.attributeStore = new AttributeStore(this)
+    this.attributeValueStore = new AttributeValueStore(this)
     
     makeAutoObservable(this)
   }

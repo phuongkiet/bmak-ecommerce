@@ -38,8 +38,8 @@ const ProductCard = ({ products }: ProductCardProps) => {
                 handleViewDetail(product.id);
               }}
             >
-              {product.name.length > 20
-                ? product.name.slice(0, 20) + "..."
+              {product.name.length > 15
+                ? product.name.slice(0, 15) + "..."
                 : product.name}
             </h3>
             <p className="text-primary-600 font-bold mt-2">

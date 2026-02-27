@@ -14,9 +14,10 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import type { PageSection } from "@/store/PageStore";
-import ImageDropZone from "@/components/Images/ImageDropZone";
+import ImageChoser from "@/components/Images/ImageChoser";
 import Select from "react-select";
 import RichTextEditor from '@/components/RichTextEditor'
+import { uploadImage } from '@/agent/api/mediaApi'
 // import { HeroSlideDto } from '@/models/Page'
 
 const AdminDetailPage = observer(() => {
@@ -61,7 +62,7 @@ const AdminDetailPage = observer(() => {
           : undefined,
       carouselConfig:
         type === "product-carousel"
-          ? { listType: "newest", title: "Sản phẩm nổi bật", tag: "", limit: 8 }
+          ? { listType: "newest", title: "Sản phẩm nổi bật", tag: "", limit: 8, autoPlay: true, intervalSeconds: 5 }
           : undefined,
     };
     setLocalSections((s) => [...s, newSection]);
@@ -129,7 +130,40 @@ const AdminDetailPage = observer(() => {
     if (!currentPage) return;
     try {
       console.log("Saving page with Id: ", currentPage.id, "Sections:", localSections);
-      const success = await pageStore.savePage(currentPage.id, localSections);
+
+      // Replace any blob: (object URL) images by uploading them first
+      const uploadBlobUrl = async (blobUrl: string) => {
+        try {
+          const resp = await fetch(blobUrl)
+          const blob = await resp.blob()
+          const ext = (blob.type && blob.type.split('/')[1]) || 'png'
+          const fileName = `upload_${Date.now()}.${ext}`
+          const file = new File([blob], fileName, { type: blob.type })
+          const uploaded = await uploadImage(file)
+          return uploaded?.url || ''
+        } catch (err) {
+          console.error('Failed to upload blob URL', err)
+          return ''
+        }
+      }
+
+      const sectionsToSave = JSON.parse(JSON.stringify(localSections)) as PageSection[]
+      for (const sec of sectionsToSave) {
+        if (sec.imageUrl && typeof sec.imageUrl === 'string' && sec.imageUrl.startsWith('blob:')) {
+          const newUrl = await uploadBlobUrl(sec.imageUrl)
+          if (newUrl) sec.imageUrl = newUrl
+        }
+        if (sec.heroSlides && Array.isArray(sec.heroSlides)) {
+          for (const slide of sec.heroSlides) {
+            if (slide.image && typeof slide.image === 'string' && slide.image.startsWith('blob:')) {
+              const newUrl = await uploadBlobUrl(slide.image)
+              if (newUrl) slide.image = newUrl
+            }
+          }
+        }
+      }
+
+      const success = await pageStore.savePage(currentPage.id, sectionsToSave);
       if (success) {
         alert("Đã lưu thay đổi");
         pageStore.loadPages();
@@ -323,10 +357,7 @@ const AdminDetailPage = observer(() => {
                   {section.type === 'image' && (
                     <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1">
-                        <ImageDropZone onDrop={(files) => handleSectionImageChange(section.id, files)} isLoading={false} />
-                        {section.imageUrl && (
-                          <img src={section.imageUrl} alt="preview" className="mt-3 max-h-40 rounded shadow-sm" />
-                        )}
+                        <ImageChoser onDrop={(files) => handleSectionImageChange(section.id, files)} onSelectImage={(url) => updateSection(section.id, { imageUrl: url })} isLoading={false} previewUrl={section.imageUrl} />
                       </div>
                       <div className="flex-1">
                         <label className="text-sm font-medium text-gray-700">Chú thích (tuỳ chọn)</label>
@@ -366,8 +397,7 @@ const AdminDetailPage = observer(() => {
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Hình ảnh</label>
-                        <ImageDropZone onDrop={(files) => handleSectionImageChange(section.id, files)} isLoading={false} />
-                        {section.imageUrl && <img src={section.imageUrl} alt="preview" className="mt-3 max-h-40 rounded shadow-sm" />}
+                        <ImageChoser onDrop={(files) => handleSectionImageChange(section.id, files)} onSelectImage={(url) => updateSection(section.id, { imageUrl: url })} isLoading={false} previewUrl={section.imageUrl} />
                       </div>
                     </div>
                   )}
@@ -380,12 +410,11 @@ const AdminDetailPage = observer(() => {
                       </div>
                       {(section.heroSlides || []).map((slide) => (
                         <div key={slide.id} className="border border-gray-100 rounded-lg p-3">
-                          <div className="flex gap-4 items-start">
-                            <div className="w-36">
-                              <ImageDropZone onDrop={(files) => handleHeroSlideImageChange(section.id, slide.id, files)} isLoading={false} />
-                              {slide.image && <img src={slide.image} alt="slide" className="mt-2 max-h-24 rounded" />}
+                          <div className="grid grid-cols-12 gap-4 items-start">
+                            <div className="col-span-5">
+                              <ImageChoser onDrop={(files) => handleHeroSlideImageChange(section.id, slide.id, files)} onSelectImage={(url) => updateHeroSlide(section.id, slide.id, { image: url })} isLoading={false} previewUrl={slide.image} />
                             </div>
-                            <div className="flex-1 space-y-2">
+                            <div className="col-span-6 space-y-2">
                               <input
                                 type="text"
                                 value={slide.title || ''}
@@ -401,7 +430,7 @@ const AdminDetailPage = observer(() => {
                                 className="w-full border border-gray-200 rounded-lg p-2 text-sm"
                               />
                             </div>
-                            <div className="flex flex-col gap-2">
+                            <div className="col-span-1 flex flex-col gap-2">
                               <button onClick={() => removeHeroSlide(section.id, slide.id)} className="text-red-600">Xóa</button>
                             </div>
                           </div>
@@ -421,7 +450,7 @@ const AdminDetailPage = observer(() => {
                           className="mt-2 w-full border border-gray-200 rounded-lg p-2 text-sm"
                         />
                         <div className="mt-2">
-                          <label className="text-sm font-medium text-gray-700">Loại danh sách</label>
+                          <label className="text-sm font-medium text-gray-700 mr-2">Loại danh sách</label>
                           <select
                             value={section.carouselConfig?.listType || 'newest'}
                             onChange={(e) => updateSection(section.id, { carouselConfig: { ...(section.carouselConfig || { listType: 'newest', title: '' }), listType: e.target.value as any } })}
@@ -451,6 +480,28 @@ const AdminDetailPage = observer(() => {
                           onChange={(e) => updateSection(section.id, { carouselConfig: { ...(section.carouselConfig || { listType: 'newest', title: '' }), limit: Number(e.target.value) } })}
                           className="mt-2 w-32 border border-gray-200 rounded-lg p-2 text-sm"
                         />
+                        <div className="mt-4">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={section.carouselConfig?.autoPlay ?? true}
+                              onChange={(e) => updateSection(section.id, { carouselConfig: { ...(section.carouselConfig || { listType: 'newest', title: '' }), autoPlay: e.target.checked } })}
+                              className="w-4 h-4 text-primary-600"
+                            />
+                            <span className="font-medium">Tự chạy (Auto play)</span>
+                          </label>
+
+                          <div className="mt-2 flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-700">Tốc độ (giây)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={section.carouselConfig?.intervalSeconds ?? 5}
+                              onChange={(e) => updateSection(section.id, { carouselConfig: { ...(section.carouselConfig || { listType: 'newest', title: '' }), intervalSeconds: Number(e.target.value) } })}
+                              className="ml-2 w-24 border border-gray-200 rounded-lg p-2 text-sm"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

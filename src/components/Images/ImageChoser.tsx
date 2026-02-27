@@ -1,5 +1,7 @@
 import { useDropzone } from "react-dropzone";
-import React from "react";
+import React, { useState } from "react";
+import MediaPicker from './MediaPicker'
+import type { AppImageDto } from '@/models/Image'
 
 interface ImageDropZoneProps {
   onDrop?: (files: File[]) => void;
@@ -10,9 +12,11 @@ interface ImageDropZoneProps {
 
 const ImageDropZone: React.FC<ImageDropZoneProps> = ({
   onDrop,
+  onSelectImage,
   isLoading = false,
   previewUrl = null,
 }) => {
+  const [showPicker, setShowPicker] = useState(false)
   const handleDrop = (acceptedFiles: File[]) => {
     console.log("Accepted files:", acceptedFiles);
     if (onDrop) {
@@ -22,7 +26,7 @@ const ImageDropZone: React.FC<ImageDropZoneProps> = ({
     }
   };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
     accept: {
       "image/png": [],
@@ -42,9 +46,6 @@ const ImageDropZone: React.FC<ImageDropZoneProps> = ({
         } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         id="demo-upload"
       >
-        {/* Hidden Input */}
-        <input {...getInputProps()} />
-
         {/** If previewUrl provided, show the image inside the drop area **/}
         {/** This keeps the drop/input behavior while displaying the image. */}
         {/** Clicking or dropping will still trigger the dropzone. */}
@@ -52,7 +53,7 @@ const ImageDropZone: React.FC<ImageDropZoneProps> = ({
           <div className="w-full h-56 flex items-center justify-center overflow-hidden rounded-md relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="preview" className="w-full h-full object-cover rounded-md" />
-            <div className="absolute bottom-4 right-4 bg-white/80 rounded px-2 py-1 text-sm text-primary-600 hover:cursor-pointer hover:bg-primary-700 hover:text-white">Thay ảnh</div>
+            <div className="absolute bottom-4 right-4 bg-white/80 rounded px-2 py-1 text-sm text-primary-600 hover:cursor-pointer hover:bg-primary-700 hover:text-white" onClick={() => setShowPicker(true)}>Thay ảnh</div>
           </div>
         ) : (
           <div className="dz-message flex flex-col items-center m-0!">
@@ -77,7 +78,7 @@ const ImageDropZone: React.FC<ImageDropZoneProps> = ({
 
             {/* Text Content */}
             <h4 className="mb-3 font-semibold text-gray-800 text-xl">
-              {isLoading ? 'Đang xử lý...' : isDragActive ? 'Thả file ảnh vào đây' : 'Kéo thả file ảnh vào đây'}
+              {isLoading ? 'Đang xử lý...' : isDragActive ? 'Thả file ảnh vào đây' : 'Kéo thả ảnh vào đây'}
             </h4>
 
             <span className="text-center mb-5 block w-full max-w-[290px] text-sm text-gray-600">
@@ -87,11 +88,46 @@ const ImageDropZone: React.FC<ImageDropZoneProps> = ({
             </span>
 
             {!isLoading && (
-              <span className="font-medium underline text-sm text-primary-600 hover:cursor-pointer">Chọn file</span>
+              <span onClick={() => setShowPicker(true)} className="font-medium underline text-sm text-primary-600 hover:cursor-pointer">Chọn file</span>
             )}
           </div>
         )}
       </form>
+      {showPicker && (
+        <MediaPicker
+          onClose={() => setShowPicker(false)}
+          multiSelect={false}
+          onSelect={(imgOrImgs: AppImageDto | AppImageDto[]) => {
+            // If array provided, take first
+            if (Array.isArray(imgOrImgs)) {
+              const first = imgOrImgs[0]
+              if (!first) return
+              if (onSelectImage) onSelectImage(first.url)
+              if (onDrop) {
+                Promise.all(
+                  imgOrImgs.map((it) => fetch(it.url).then((r) => r.blob()))
+                )
+                  .then((blobs) => blobs.map((b, i) => new File([b], imgOrImgs[i].fileName || `image_${i}`, { type: b.type })))
+                  .then((files) => onDrop(files))
+                  .catch((e) => console.error(e))
+              }
+            } else {
+              const img = imgOrImgs as AppImageDto
+              if (onSelectImage) onSelectImage(img.url)
+              if (onDrop) {
+                fetch(img.url)
+                  .then((res) => res.blob())
+                  .then((blob) => {
+                    const name = img.fileName || img.url.split('/').pop() || 'image'
+                    const file = new File([blob], name, { type: blob.type })
+                    onDrop([file])
+                  })
+                  .catch((e) => console.error(e))
+              }
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

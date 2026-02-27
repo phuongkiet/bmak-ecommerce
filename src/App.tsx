@@ -32,6 +32,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import AdminSignIn from './pages/admin/AdminSignIn'
 import AddPage from './pages/admin/CreatePage/Page/AddPage'
+import AdminDetailProduct from './pages/admin/DetailPage/AdminDetailProduct'
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
               <CustomerLayout>
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/trang-chu" element={<Home />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/products/:id" element={<ProductDetail />} />
                   <Route path="/cart" element={<Cart />} />
@@ -74,6 +76,7 @@ function App() {
                     <Route index element={<AdminDashboard />} />
                     <Route path="products" element={<AdminProducts />} />
                     <Route path="products/add" element={<AddProduct />} />
+                    <Route path="products/:id" element={<AdminDetailProduct />} />
                     <Route path="orders" element={<AdminOrders />} />
                     <Route path="customers" element={<AdminCustomers />} />
                     <Route path="categories" element={<AdminCategories />} />

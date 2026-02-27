@@ -16,7 +16,7 @@ const AdminSignIn = observer(() => {
     if (!email || !password) return;
     try {
       await authStore.login(email, password);
-      navigate("/admin/dashboard");
+      navigate("/admin");
     } catch (err) {
       // error is handled in store; nothing more to do here
     }

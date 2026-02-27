@@ -16,6 +16,18 @@ export interface ProductAttribute {
   attributeId: number
 }
 
+export interface ProductAttributeValueDto {
+  id: number
+  value: string
+  extraData: string
+  productId: number
+  attributeId: number
+}
+
+export interface GetAttributeValuesQuery {
+  attributeId: number
+}
+
 
 
 
