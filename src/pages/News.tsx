@@ -1,21 +1,10 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "@/store";
 import PageSectionsRenderer from "@/components/PageSectionsRenderer";
-
-interface NewsArticle {
-  id: number;
-  title: string;
-  excerpt: string;
-  content?: string;
-  image: string;
-  author: string;
-  date: string;
-  category: string;
-  slug: string;
-  tags?: string[];
-}
+import type { NewsPostSummaryDto } from "@/models/NewsPost";
 
 interface NewsCategory {
   id: number;
@@ -25,69 +14,57 @@ interface NewsCategory {
 }
 
 const News = observer(() => {
-  const { pageStore } = useStore();
+  const navigate = useNavigate();
+  const { pageStore, newsStore } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
   useEffect(() => {
     pageStore.getPageBySlugFromApi("news");
-  }, [pageStore]);
+    newsStore.fetchNewsCategories();
+    newsStore.fetchNewsPosts();
+  }, [pageStore, newsStore]);
 
   const newsPage =
     pageStore.selectedPage?.slug === "news"
       ? pageStore.selectedPage
       : undefined;
 
-  // Mock data - trong thực tế sẽ fetch từ BE
-  const articles: NewsArticle[] = [
-    {
-      id: 1,
-      title:
-        "4 Sai Lầm Về Gạch Ốp Tường Khiến Ngôi Nhà Nhanh Xuống Cấp Sau 2 Năm",
-      excerpt:
-        "Sai lầm khi xem nhè độ hút nước của gạch ốp tường. Sai lầm khi dùng xi măng ốp gạch khô lòn...",
-      content: "Nội dung tin tức đang được cập nhật",
-      image:
-        "https://images.unsplash.com/photo-1565971511849-76a60a516170?w=800&q=80",
-      author: "Gạch An Khanh",
-      date: "25/12/2025",
-      category: "Tin Tức",
-      slug: "4-sai-lam-ve-gach-op-tuong",
-      tags: ["gạch", "tường", "xây dựng"],
-    },
-    {
-      id: 2,
-      title: '5 Lưu Ý "Vàng" Khi Mua Gạch Ốp Tường Giúp Ngôi Nhà Bền Đẹp',
-      excerpt:
-        "Khi lựa chọn gạch ốp tường, bạn cần biết những điểm quan trọng...",
-      content: "Nội dung tin tức đang được cập nhật",
-      image:
-        "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&q=80",
-      author: "Gạch An Khanh",
-      date: "03/07/2025",
-      category: "Giới Thiệu",
-      slug: "5-luu-y-vang-khi-mua-gach",
-      tags: ["gạch", "mua sắm"],
-    },
-  ];
+  const publishedPosts = newsStore.posts.filter((post) => post.isPublished);
 
-  const categories: NewsCategory[] = [
-    { id: 1, name: "Chính sách", slug: "chinh-sach", count: 5 },
-    { id: 2, name: "Giới Thiệu", slug: "gioi-thieu", count: 6 },
-    { id: 3, name: "Khuyến Mãi", slug: "khuyen-mai", count: 1 },
-    { id: 4, name: "Tin Tức", slug: "tin-tuc", count: 6 },
-  ];
-
-  const recentArticles = articles.slice(0, 3);
-
-  const filteredArticles = articles.filter((article) => {
+  const filteredArticles = publishedPosts.filter((article) => {
     const matchSearch =
       article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+      (article.summary || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchCategory =
-      !selectedCategory || article.category === selectedCategory;
+      !selectedCategory || article.categoryId === selectedCategory;
     return matchSearch && matchCategory;
   });
+
+  const recentArticles = [...publishedPosts]
+    .sort((a, b) => {
+      const dateA = new Date(a.publishedAt || a.createdAt).getTime();
+      const dateB = new Date(b.publishedAt || b.createdAt).getTime();
+      return dateB - dateA;
+    })
+    .slice(0, 3);
+
+  const categories: NewsCategory[] = newsStore.categories.map((category) => ({
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    count: publishedPosts.filter((post) => post.categoryId === category.id).length,
+  }));
+
+  const formatNewsDate = (post: NewsPostSummaryDto) =>
+    new Date(post.publishedAt || post.createdAt).toLocaleDateString("vi-VN");
+
+  const getThumbnail = (post: NewsPostSummaryDto) =>
+    post.thumbnailUrl || "/images/default/no-image.png";
+
+  const goToNewsDetail = (id: number) => {
+    navigate(`/news/${id}`);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -120,76 +97,82 @@ const News = observer(() => {
           {/* Left Content */}
           <div className="col-span-12 lg:col-span-9">
             <div className="space-y-8">
-              {filteredArticles.length === 0 ? (
+              {(newsStore.isLoadingPosts || newsStore.isLoadingCategories) && (
                 <div className="bg-gray-50 rounded-lg p-12 text-center">
-                  <p className="text-gray-500 text-lg">
-                    Nội dung tin tức đang được cập nhật
-                  </p>
+                  <p className="text-gray-500 text-lg">Đang tải tin tức...</p>
                 </div>
-              ) : (
-                filteredArticles.map((article, index) => (
-                  <article
-                    key={article.id}
-                    className="border-b pb-8 last:border-b-0"
-                  >
-                    <div className="flex gap-6">
-                      {/* Featured Image */}
-                      <div className="flex-shrink-0 w-64 h-48">
-                        <img
-                          src={article.image}
-                          alt={article.title}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                      </div>
+              )}
 
-                      {/* Content */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded">
-                            {index + 1}
-                          </span>
-                          <span className="text-sm text-gray-500 font-medium">
-                            {article.date}
-                          </span>
+              {!newsStore.isLoadingPosts && newsStore.error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                  {newsStore.error}
+                </div>
+              )}
+
+              {!newsStore.isLoadingPosts && !newsStore.error && (
+                filteredArticles.length === 0 ? (
+                  <div className="bg-gray-50 rounded-lg p-12 text-center">
+                    <p className="text-gray-500 text-lg">
+                      Nội dung tin tức đang được cập nhật
+                    </p>
+                  </div>
+                ) : (
+                  filteredArticles.map((article, index) => (
+                    <article
+                      key={article.id}
+                      className="border-b pb-8 last:border-b-0"
+                    >
+                      <div className="flex gap-6">
+                        {/* Featured Image */}
+                        <div
+                          className="flex-shrink-0 w-64 h-48 cursor-pointer"
+                          onClick={() => goToNewsDetail(article.id)}
+                        >
+                          <img src={getThumbnail(article)} alt={article.title} className="w-full h-full object-contain bg-gray-50 rounded-lg" />
                         </div>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mb-3 hover:text-primary-600 transition-colors cursor-pointer">
-                          {article.title}
-                        </h2>
-
-                        <p className="text-gray-600 text-base leading-relaxed mb-4">
-                          {article.excerpt}
-                        </p>
-
-                        {/* Tags */}
-                        {article.tags && article.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-4">
-                            {article.tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs rounded-full hover:bg-blue-100 cursor-pointer transition-colors"
-                              >
-                                {tag}
-                              </span>
-                            ))}
+                        {/* Content */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="inline-block px-3 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded">
+                              {index + 1}
+                            </span>
+                            <span className="text-sm text-gray-500 font-medium">
+                              {formatNewsDate(article)}
+                            </span>
                           </div>
-                        )}
 
-                        {/* Meta */}
-                        <div className="flex items-center justify-between text-sm text-gray-500">
-                          <div className="flex items-center gap-4">
-                            <span>By {article.author}</span>
-                            <span>•</span>
-                            <span>{article.category}</span>
+                          <h2
+                            className="text-2xl font-bold text-gray-900 mb-3 hover:text-primary-600 transition-colors cursor-pointer"
+                            onClick={() => goToNewsDetail(article.id)}
+                          >
+                            {article.title}
+                          </h2>
+
+                          <p className="text-gray-600 text-base leading-relaxed mb-4">
+                            {article.summary || "Nội dung tin tức đang được cập nhật"}
+                          </p>
+
+                          {/* Meta */}
+                          <div className="flex items-center justify-between text-sm text-gray-500">
+                            <div className="flex items-center gap-4">
+                              <span>By BMAK Store</span>
+                              <span>•</span>
+                              <span>{article.categoryName}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => goToNewsDetail(article.id)}
+                              className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
+                            >
+                              ĐỌC THÊM...
+                            </button>
                           </div>
-                          <button className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
-                            ĐỌC THÊM...
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  </article>
-                ))
+                    </article>
+                  ))
+                )
               )}
             </div>
           </div>
@@ -208,11 +191,11 @@ const News = observer(() => {
                       <button
                         onClick={() =>
                           setSelectedCategory(
-                            selectedCategory === cat.name ? null : cat.name,
+                            selectedCategory === cat.id ? null : cat.id,
                           )
                         }
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                          selectedCategory === cat.name
+                          selectedCategory === cat.id
                             ? "bg-primary-50 text-primary-700"
                             : "hover:bg-gray-50 text-gray-700"
                         }`}
@@ -240,21 +223,27 @@ const News = observer(() => {
                     >
                       <div className="flex gap-3">
                         {/* Thumbnail */}
-                        <div className="flex-shrink-0 w-20 h-20">
+                        <div
+                          className="flex-shrink-0 w-20 h-20 cursor-pointer"
+                          onClick={() => goToNewsDetail(article.id)}
+                        >
                           <img
-                            src={article.image}
+                            src={getThumbnail(article)}
                             alt={article.title}
-                            className="w-full h-full object-cover rounded"
+                            className="w-full h-full object-contain bg-gray-50 rounded"
                           />
                         </div>
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-primary-600 transition-colors cursor-pointer">
+                          <h4
+                            className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-primary-600 transition-colors cursor-pointer"
+                            onClick={() => goToNewsDetail(article.id)}
+                          >
                             {article.title}
                           </h4>
                           <p className="text-xs text-gray-500 mt-2">
-                            {article.date}
+                            {formatNewsDate(article)}
                           </p>
                         </div>
                       </div>

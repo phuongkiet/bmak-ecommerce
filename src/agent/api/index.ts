@@ -7,4 +7,7 @@ export * from './orderApi'
 export * from './categoryApi'
 export * from './pageApi'
 export * from './attributeValueApi'
+export * from './favoriteApi'
+export * from './newsCategoryApi'
+export * from './newsPostApi'
 

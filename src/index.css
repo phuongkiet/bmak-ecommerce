@@ -76,12 +76,12 @@
 
   /* Rich Text Editor Styles */
   .rich-text-editor-wrapper .ql-container {
-    min-height: 200px;
+    min-height: var(--rte-min-height, 200px);
     font-size: 14px;
   }
 
   .rich-text-editor-wrapper .ql-editor {
-    min-height: 200px;
+    min-height: var(--rte-min-height, 200px);
   }
 
   .rich-text-editor-wrapper .ql-toolbar {
@@ -89,7 +89,7 @@
     border-left: 1px solid #e5e7eb;
     border-right: 1px solid #e5e7eb;
     border-bottom: none;
-    border-radius: 8px 8px 0 0;
+    border-radius: 0;
     background: white;
   }
 

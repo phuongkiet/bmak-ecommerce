@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
-import { useStore } from '@/store'
 import { Plus, Edit, Trash2 } from 'lucide-react'
-import { formatPrice } from '@/utils'
+import { useStore } from '@/store'
+import { formatDate } from '@/utils'
+import type { NewsPostSummaryDto } from '@/models/NewsPost'
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,80 +15,88 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import { useState } from 'react'
-import type { ProductSummaryDto } from '@/models/Product'
 
-const AdminProducts = observer(() => {
+const AdminNewsPosts = observer(() => {
   const navigate = useNavigate()
-  const { productStore } = useStore()
+  const { newsStore, commonStore } = useStore()
   const [sorting, setSorting] = useState<SortingState>([])
 
   useEffect(() => {
-    // Lấy sản phẩm từ API với paging chuẩn backend
-    productStore.fetchProductsPaged({
-      pageIndex: 1,
-      pageSize: 20,
-      sort: 'priceAsc',
-    })
-  }, [productStore])
+    newsStore.fetchNewsPosts()
+  }, [newsStore])
 
-  const columns = useMemo<ColumnDef<ProductSummaryDto>[]>(
+  const handleDelete = async (id: number) => {
+    const confirmed = window.confirm('Bạn có chắc muốn xóa bài viết này?')
+    if (!confirmed) return
+
+    try {
+      await newsStore.deleteNewsPost(id)
+      commonStore.showSuccess('Xóa bài viết thành công')
+    } catch (error) {
+      console.error('Failed to delete news post:', error)
+      commonStore.showError(newsStore.error || 'Không thể xóa bài viết. Vui lòng thử lại.')
+    }
+  }
+
+  const columns = useMemo<ColumnDef<NewsPostSummaryDto>[]>(
     () => [
       {
-        accessorKey: 'thumbnail',
-        header: 'Hình ảnh',
+        accessorKey: 'thumbnailUrl',
+        header: 'Ảnh',
         cell: ({ row }) => (
           <img
-            src={row.original.thumbnail || '/images/default/no-image.png'}
-            alt={row.original.name}
+            src={row.original.thumbnailUrl || '/images/default/no-image.png'}
+            alt={row.original.title}
             className="h-12 w-12 object-contain bg-gray-50 rounded"
           />
         ),
       },
       {
-        accessorKey: 'name',
-        header: 'Tên sản phẩm',
+        accessorKey: 'title',
+        header: 'Tiêu đề',
         cell: ({ row }) => (
-          <div>
-            {row.original.name.length > 40 ? (
-              <div className="text-sm font-medium text-gray-900">{row.original.name.slice(0,40)}...</div>
-            ) : (
-              <div className="text-sm font-medium text-gray-900">{row.original.name}</div>
-            )}
-            <div className="text-sm text-gray-500">SKU: {row.original.sku}</div>
+          <div className="max-w-md">
+            <div className="text-sm font-medium text-gray-900 line-clamp-2">
+              {row.original.title}
+            </div>
+            <div className="text-xs text-gray-500">Slug: {row.original.slug}</div>
           </div>
         ),
       },
       {
-        accessorKey: 'price',
-        header: 'Giá',
+        accessorKey: 'categoryName',
+        header: 'Danh mục',
         cell: ({ row }) => (
-          <div className="text-sm">
-            <div className="text-gray-900 font-semibold">{formatPrice(row.original.price)}</div>
-            {row.original.originalPrice && row.original.originalPrice > row.original.price && (
-              <div className="text-gray-400 line-through text-xs">{formatPrice(row.original.originalPrice)}</div>
-            )}
-          </div>
+          <span className="text-sm text-gray-700">{row.original.categoryName}</span>
         ),
       },
       {
-        accessorKey: 'totalSold',
-        header: 'Đã bán',
+        accessorKey: 'viewCount',
+        header: 'Lượt xem',
         cell: ({ row }) => (
-          <span className="text-sm text-gray-500">{row.original.totalSold || 0}</span>
+          <span className="text-sm text-gray-700">{row.original.viewCount || 0}</span>
         ),
       },
       {
-        accessorKey: 'rating',
-        header: 'Đánh giá',
+        accessorKey: 'isPublished',
+        header: 'Trạng thái',
         cell: ({ row }) => (
-          <div className="text-sm text-gray-500">
-            {row.original.rating > 0 ? (
-              <span>⭐ {row.original.rating.toFixed(1)} ({row.original.reviewCount})</span>
-            ) : (
-              <span>Chưa có</span>
-            )}
-          </div>
+          <span
+            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+              row.original.isPublished
+                ? 'bg-green-100 text-green-700'
+                : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            {row.original.isPublished ? 'Đã xuất bản' : 'Nháp'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Ngày tạo',
+        cell: ({ row }) => (
+          <span className="text-sm text-gray-600">{formatDate(row.original.createdAt)}</span>
         ),
       },
       {
@@ -95,21 +104,27 @@ const AdminProducts = observer(() => {
         header: 'Thao tác',
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <button className="text-primary-600 hover:text-primary-900 transition-colors" onClick={() => navigate(`/admin/products/${row.original.id}`)}>
+            <button
+              className="text-primary-600 hover:text-primary-900 transition-colors"
+              onClick={() => navigate(`/admin/news/${row.original.id}`)}
+            >
               <Edit size={18} />
             </button>
-            <button className="text-red-600 hover:text-red-900 transition-colors">
+            <button
+              className="text-red-600 hover:text-red-900 transition-colors"
+              onClick={() => handleDelete(row.original.id)}
+            >
               <Trash2 size={18} />
             </button>
           </div>
         ),
       },
     ],
-    []
+    [navigate],
   )
 
   const table = useReactTable({
-    data: productStore.productSummaries,
+    data: newsStore.posts,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -124,23 +139,23 @@ const AdminProducts = observer(() => {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Quản lý sản phẩm</h1>
+        <h1 className="text-3xl font-bold">Quản lý tin tức</h1>
         <button
-          onClick={() => navigate('/admin/products/add')}
+          onClick={() => navigate('/admin/news/add')}
           className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
         >
           <Plus size={20} />
-          Thêm sản phẩm
+          Thêm bài viết
         </button>
       </div>
 
-      {productStore.isLoading ? (
+      {newsStore.isLoadingPosts ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <p className="text-gray-600">Đang tải...</p>
         </div>
-      ) : productStore.error ? (
+      ) : newsStore.error ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          {productStore.error}
+          {newsStore.error}
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -163,7 +178,10 @@ const AdminProducts = observer(() => {
                             }
                             onClick={header.column.getToggleSortingHandler()}
                           >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
                             {{
                               asc: ' ↑',
                               desc: ' ↓',
@@ -175,6 +193,7 @@ const AdminProducts = observer(() => {
                   </tr>
                 ))}
               </thead>
+
               <tbody className="bg-white divide-y divide-gray-200">
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
@@ -182,7 +201,7 @@ const AdminProducts = observer(() => {
                       colSpan={columns.length}
                       className="px-6 py-8 text-center text-gray-500"
                     >
-                      Chưa có sản phẩm nào
+                      Chưa có bài viết nào
                     </td>
                   </tr>
                 ) : (
@@ -200,7 +219,6 @@ const AdminProducts = observer(() => {
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
@@ -238,7 +256,7 @@ const AdminProducts = observer(() => {
               </span>
               <span className="text-gray-500">|</span>
               <span>
-                Hiển thị {table.getRowModel().rows.length} / {table.getRowCount()} sản phẩm
+                Hiển thị {table.getRowModel().rows.length} / {table.getRowCount()} bài viết
               </span>
             </div>
           </div>
@@ -248,5 +266,4 @@ const AdminProducts = observer(() => {
   )
 })
 
-export default AdminProducts
-
+export default AdminNewsPosts

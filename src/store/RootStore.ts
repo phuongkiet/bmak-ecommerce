@@ -13,6 +13,8 @@ import MediaStore from './MediaStore'
 import TagStore from './TagStore'
 import AttributeStore from './AttributeStore'
 import AttributeValueStore from './AttributeValueStore'
+import FavoriteStore from './FavoriteStore'
+import NewsStore from './NewsStore'
 
 class RootStore {
   commonStore: CommonStore
@@ -29,6 +31,8 @@ class RootStore {
   tagStore: TagStore
   attributeStore: AttributeStore
   attributeValueStore: AttributeValueStore
+  favoriteStore: FavoriteStore
+  newsStore: NewsStore
 
   constructor() {
     this.commonStore = new CommonStore(this)
@@ -45,6 +49,8 @@ class RootStore {
     this.tagStore = new TagStore(this)
     this.attributeStore = new AttributeStore(this)
     this.attributeValueStore = new AttributeValueStore(this)
+    this.favoriteStore = new FavoriteStore(this)
+    this.newsStore = new NewsStore(this)
     
     makeAutoObservable(this)
   }

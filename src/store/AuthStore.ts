@@ -3,6 +3,7 @@ import RootStore from './RootStore'
 import * as authApi from '@/agent/api/authApi'
 import { AuthResponse } from '@/models/Auth'
 import { apiClient } from '@/agent/api/apiClient'
+import { clearCompareStorage } from '@/utils/compareStorage'
 
 class AuthStore {
   user: AuthResponse | null = null
@@ -89,6 +90,7 @@ class AuthStore {
         this.rootStore.commonStore.clearToken()
         this.rootStore.commonStore.clearRefreshToken()
         this.clearUserFromStorage()
+        clearCompareStorage()
       })
     }
   }
@@ -115,8 +117,14 @@ class AuthStore {
 
       const userStr = localStorage.getItem('user')
       const isAuth = localStorage.getItem('isAuthenticated')
+      const accessToken = this.rootStore.commonStore.getToken()
 
       if (userStr && isAuth === 'true') {
+        if (!accessToken) {
+          this.clearUserFromStorage()
+          return
+        }
+
         const user = JSON.parse(userStr)
         // Normalize role to lowercase if present
         if (user && user.role) {

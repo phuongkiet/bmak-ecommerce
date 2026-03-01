@@ -14,6 +14,7 @@ import Checkout from './pages/Checkout'
 import News from './pages/News'
 import Showcase from './pages/Showcase'
 import AboutUs from './pages/AboutUs'
+import MyAccount from './pages/MyAccount'
 
 // Admin pages
 import AdminDashboard from './pages/admin/Dashboard'
@@ -33,6 +34,11 @@ import SignUp from './pages/SignUp'
 import AdminSignIn from './pages/admin/AdminSignIn'
 import AddPage from './pages/admin/CreatePage/Page/AddPage'
 import AdminDetailProduct from './pages/admin/DetailPage/AdminDetailProduct'
+import ProductComparation from './pages/ProductComparation'
+import AdminNewsPosts from './pages/admin/AdminNewsPosts'
+import AddNewsPost from './pages/admin/CreatePage/News/AddNewsPost'
+import AdminDetailNewsPost from './pages/admin/DetailPage/AdminDetailNewsPost'
+import NewsDetail from './pages/NewsDetail'
 
 function App() {
   return (
@@ -53,11 +59,15 @@ function App() {
                   <Route path="/trang-chu" element={<Home />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/products/:id" element={<ProductDetail />} />
+                  <Route path="/compare" element={<ProductComparation />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/news" element={<News />} />
+                  <Route path="/news/:id" element={<NewsDetail />} />
                   <Route path="/showcase" element={<Showcase />} />
                   <Route path="/about-us" element={<AboutUs />} />
+                  <Route path="/profile" element={<MyAccount />} />
+                  <Route path="/my-account" element={<MyAccount />} />
                   <Route path="/complete-checkout" element={<CompleteCheckout />} />
                   <Route path="/sign-in" element={<SignIn />} />
                   <Route path="/sign-up" element={<SignUp />} />
@@ -77,6 +87,9 @@ function App() {
                     <Route path="products" element={<AdminProducts />} />
                     <Route path="products/add" element={<AddProduct />} />
                     <Route path="products/:id" element={<AdminDetailProduct />} />
+                    <Route path="news" element={<AdminNewsPosts />} />
+                    <Route path="news/add" element={<AddNewsPost />} />
+                    <Route path="news/:id" element={<AdminDetailNewsPost />} />
                     <Route path="orders" element={<AdminOrders />} />
                     <Route path="customers" element={<AdminCustomers />} />
                     <Route path="categories" element={<AdminCategories />} />

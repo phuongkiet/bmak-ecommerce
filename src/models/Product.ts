@@ -52,6 +52,8 @@ export interface CreateProductCommand {
   name: string
   sku: string
   slug: string
+  shortDescription?: string
+  description?: string
   basePrice: number
   salePrice: number
   salesUnit: string
@@ -151,15 +153,14 @@ export interface ProductListResponse {
   filters: ProductFilterAggregationDto;   // Aggregated filter options
 }
 
-export interface UpdateProductAttributeDto{
-  attributeId: number;
-  value: string;
-}
+export type UpdateProductAttributeDto = ProductAttributeCreateDto;
 
 export interface UpdateProductCommand{
   name: string;
   sku: string;
   slug: string;
+  shortDescription?: string;
+  description?: string;
   basePrice: number;
   salePrice: number;
   salesUnit: string;

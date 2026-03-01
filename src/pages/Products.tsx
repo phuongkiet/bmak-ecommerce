@@ -48,7 +48,7 @@ const Products = observer(() => {
   const products = productSummaries.map((p) => ({
     id: p.id,
     name: p.name,
-    image: p.thumbnail || "/placeholder-product.png",
+    image: p.thumbnail || "/images/default/no-image.png",
     price: p.price ?? p.originalPrice ?? 0,
   }));
 

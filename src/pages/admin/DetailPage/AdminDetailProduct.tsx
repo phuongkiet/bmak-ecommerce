@@ -26,6 +26,7 @@ import {
 import ImageChoser from "@/components/Images/ImageChoser";
 import MediaPicker from "@/components/Images/MediaPicker";
 import type { AppImageDto } from "@/models/Image";
+import RichTextEditor from "@/components/RichTextEditor";
 
 const AdminDetailProduct = observer(() => {
   const navigate = useNavigate();
@@ -41,6 +42,8 @@ const AdminDetailProduct = observer(() => {
     name: "",
     sku: "",
     slug: "",
+    shortDescription: "",
+    description: "",
     basePrice: 0,
     salePrice: 0,
     salesUnit: "Thùng",
@@ -82,6 +85,7 @@ const AdminDetailProduct = observer(() => {
   const [selectedAttributes, setSelectedAttributes] = useState<
     Array<{
       attributeId: number;
+      attributeValueId?: number;
       value: string;
       extraData?: string;
       isOpen?: boolean;
@@ -91,7 +95,10 @@ const AdminDetailProduct = observer(() => {
     null,
   );
   const [attributeValueOptionsByAttributeId, setAttributeValueOptionsByAttributeId] = useState<
-    Record<number, Array<{ value: string; label: string; extraData?: string }>>
+    Record<
+      number,
+      Array<{ id: number; value: string; label: string; extraData?: string }>
+    >
   >({});
   const [isCategoryBoxOpen, setIsCategoryBoxOpen] = useState(true);
   const [categoryTab, setCategoryTab] = useState<"all" | "popular">("all");
@@ -118,6 +125,7 @@ const AdminDetailProduct = observer(() => {
       })
       .filter((item): item is {
         attributeId: number;
+        attributeValueId?: number;
         value: string;
         extraData: string;
         isOpen: boolean;
@@ -142,6 +150,8 @@ const AdminDetailProduct = observer(() => {
           name: p.name || "",
           sku: p.sku || "",
           slug: p.slug || "",
+          shortDescription: p.shortDescription || "",
+          description: p.description || "",
           width: p.width ?? 0,
           height: p.height ?? 0,
           thickness: p.thickness ?? 0,
@@ -317,6 +327,7 @@ const AdminDetailProduct = observer(() => {
         ...prev,
         {
           attributeId: selectedAttributeId,
+          attributeValueId: undefined,
           value: "",
           extraData: "",
           isOpen: true,
@@ -362,13 +373,14 @@ const AdminDetailProduct = observer(() => {
       const values = attributeValueStore.getValuesByAttributeId(attributeId);
       const uniqueMap = new Map<
         string,
-        { value: string; label: string; extraData?: string }
+        { id: number; value: string; label: string; extraData?: string }
       >();
 
       values.forEach((item) => {
         if (!item.value) return;
         if (!uniqueMap.has(item.value)) {
           uniqueMap.set(item.value, {
+            id: item.id,
             value: item.value,
             label: item.value,
             extraData: item.extraData,
@@ -428,13 +440,37 @@ const AdminDetailProduct = observer(() => {
         return;
       }
 
-      const productAttributes: ProductAttributeCreateDto[] = selectedAttributes
-        .filter((attr) => attr.value.trim() !== "")
-        .map((attr) => ({
-          attributeId: attr.attributeId,
-          value: attr.value.trim(),
-          extraData: attr.extraData?.trim() || undefined,
-        }));
+      const selectedAttributesWithValue = selectedAttributes.filter(
+        (attr) => attr.value.trim() !== "",
+      );
+
+      const productAttributes: ProductAttributeCreateDto[] =
+        selectedAttributesWithValue
+          .map((attr) => {
+            const trimmedValue = attr.value.trim();
+            const matchedOption = (
+              attributeValueOptionsByAttributeId[attr.attributeId] || []
+            ).find((opt) => opt.value === trimmedValue);
+
+            const attributeValueId = attr.attributeValueId ?? matchedOption?.id;
+            if (!attributeValueId) return null;
+
+            return {
+              attributeId: attr.attributeId,
+              attributeValueId,
+            };
+          })
+          .filter(
+            (attr): attr is ProductAttributeCreateDto => attr !== null,
+          );
+
+      if (productAttributes.length !== selectedAttributesWithValue.length) {
+        alert(
+          "Một số thuộc tính chưa có giá trị hợp lệ. Vui lòng chọn giá trị có sẵn cho tất cả thuộc tính.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
 
       const command: UpdateProductCommand = {
         ...formData,
@@ -563,6 +599,42 @@ const AdminDetailProduct = observer(() => {
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="VD: GACH-MONO-60X60-001"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mô tả ngắn
+                    </label>
+                    <RichTextEditor
+                      value={formData.shortDescription || ""}
+                      onChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          shortDescription: value,
+                        }))
+                      }
+                      label="Short Description"
+                      placeholder="Nhập mô tả ngắn cho sản phẩm..."
+                      minHeight={160}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mô tả chi tiết
+                    </label>
+                    <RichTextEditor
+                      value={formData.description || ""}
+                      onChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          description: value,
+                        }))
+                      }
+                      label="Description"
+                      placeholder="Nhập nội dung mô tả chi tiết sản phẩm..."
+                      minHeight={280}
                     />
                   </div>
 
@@ -984,6 +1056,17 @@ const AdminDetailProduct = observer(() => {
                                           "extraData",
                                           "",
                                         );
+                                        setSelectedAttributes((prev) =>
+                                          prev.map((attr) =>
+                                            attr.attributeId ===
+                                            selectedAttr.attributeId
+                                              ? {
+                                                  ...attr,
+                                                  attributeValueId: undefined,
+                                                }
+                                              : attr,
+                                          ),
+                                        );
                                         return;
                                       }
                                       handleAttributeValueChange(
@@ -996,14 +1079,36 @@ const AdminDetailProduct = observer(() => {
                                         "extraData",
                                         option.extraData || "",
                                       );
+                                      setSelectedAttributes((prev) =>
+                                        prev.map((attr) =>
+                                          attr.attributeId ===
+                                          selectedAttr.attributeId
+                                            ? {
+                                                ...attr,
+                                                attributeValueId: option.id,
+                                              }
+                                            : attr,
+                                        ),
+                                      );
                                     }}
-                                    onCreateOption={(inputValue) =>
+                                    onCreateOption={(inputValue) => {
                                       handleAttributeValueChange(
                                         selectedAttr.attributeId,
                                         "value",
                                         inputValue.trim(),
-                                      )
-                                    }
+                                      );
+                                      setSelectedAttributes((prev) =>
+                                        prev.map((attr) =>
+                                          attr.attributeId ===
+                                          selectedAttr.attributeId
+                                            ? {
+                                                ...attr,
+                                                attributeValueId: undefined,
+                                              }
+                                            : attr,
+                                        ),
+                                      );
+                                    }}
                                     placeholder="Chọn hoặc nhập giá trị"
                                     isClearable
                                     isSearchable
@@ -1059,7 +1164,7 @@ const AdminDetailProduct = observer(() => {
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="w-full h-64 object-cover rounded-lg"
+                    className="w-full h-64 object-contain bg-gray-50 rounded-lg"
                   />
                   <button
                     type="button"
@@ -1108,9 +1213,9 @@ const AdminDetailProduct = observer(() => {
                       className="relative rounded overflow-hidden border"
                     >
                       <img
-                        src={img.url}
+                        src={img.url || '/images/default/no-image.png'}
                         alt={img.fileName}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain bg-gray-50"
                       />
                       <button
                         type="button"

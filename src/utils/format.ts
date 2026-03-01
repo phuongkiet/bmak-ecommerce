@@ -12,7 +12,7 @@ export const formatCurrency = (amount: number): string => {
  * Format số tiền đơn giản (chỉ số)
  */
 export const formatPrice = (amount: number): string => {
-  return amount.toLocaleString('vi-VN') + ' đ'
+  return 'đ ' + amount.toLocaleString('vi-VN') 
 }
 
 /**
@@ -39,6 +39,18 @@ export const formatDateTime = (date: string | Date): string => {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d)
+}
+
+/**
+ * Chuyển HTML string sang plain text
+ */
+export const htmlToPlainText = (value?: string): string => {
+  if (!value) return ''
+
+  return value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 

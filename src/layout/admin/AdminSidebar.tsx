@@ -9,6 +9,7 @@ import {
   Settings,
   FileText,
   FileEdit,
+  BookOpen
 } from "lucide-react";
 
 const AdminSidebar = observer(() => {
@@ -17,6 +18,7 @@ const AdminSidebar = observer(() => {
     { path: "/admin", icon: LayoutDashboard, label: "Bảng điều khiển" },
     { path: "/admin/media", icon: FileText, label: "Thư viện ảnh" },
     { path: "/admin/products", icon: Package, label: "Sản phẩm" },
+    { path: "/admin/news", icon: BookOpen, label: "Tin tức" },
     { path: "/admin/categories", icon: FileText, label: "Danh mục sản phẩm" },
     { path: "/admin/customers", icon: Users, label: "Quản lý người dùng" },
     { path: "/admin/orders", icon: ShoppingCart, label: "Đơn hàng" },

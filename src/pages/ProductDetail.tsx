@@ -1,13 +1,22 @@
 import { useStore } from "@/store";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { formatPrice } from "@/utils";
 import { observer } from "mobx-react-lite";
+import ProductExtraInfoTabs from "@/components/Products/ProductExtraInfoTabs";
+import { Checkbox } from "@mui/material";
+import {
+  addProductToCompare,
+  isProductCompared,
+  removeProductFromCompare,
+} from "@/utils/compareStorage";
+import { Heart } from "lucide-react";
 
 const ProductDetail = observer(() => {
   const { id } = useParams();
-  const { productStore, cartStore } = useStore();
+  const { productStore, cartStore, favoriteStore, authStore } = useStore();
   const [quantity, setQuantity] = useState(1);
+  const [isComparing, setIsComparing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -28,19 +37,9 @@ const ProductDetail = observer(() => {
     () =>
       product?.thumbnail ||
       product?.images?.[0]?.url ||
-      "/placeholder-product.png",
+      "/images/default/no-image.png",
     [product],
   );
-
-  const specs = useMemo(() => {
-    if (!product?.specificationsJson) return null;
-    try {
-      return JSON.parse(product.specificationsJson) as Record<string, string>;
-    } catch (e) {
-      console.warn("Invalid specificationsJson", e);
-      return null;
-    }
-  }, [product?.specificationsJson]);
 
   const hasDiscount =
     product?.originalPrice && product.originalPrice > (product.price ?? 0);
@@ -61,6 +60,45 @@ const ProductDetail = observer(() => {
     return product.stockQuantity > 0 ? product.stockQuantity : 1;
   }, [product]);
 
+  const getAttrValue = (name: string) =>
+    product?.attributes?.find((attr) => attr.name === name)?.value;
+
+  const sizeValue = getAttrValue("Kích thước");
+  const surfaceValue = getAttrValue("Bề mặt");
+  const materialValue = getAttrValue("Chất liệu");
+  const originValue = getAttrValue("Xuất xứ");
+  const colorValue = getAttrValue("Màu sắc");
+
+  const resolveColorValue = (value?: string) => {
+    if (!value) return "#e5e7eb";
+    const normalized = value.trim().toLowerCase();
+
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized)) return normalized;
+    if (/^rgb\(/i.test(normalized) || /^hsl\(/i.test(normalized))
+      return normalized;
+
+    const colorMap: Record<string, string> = {
+      trắng: "#f9fafb",
+      den: "#111827",
+      đen: "#111827",
+      xám: "#9ca3af",
+      ghi: "#9ca3af",
+      xanh: "#3b82f6",
+      "xanh dương": "#2563eb",
+      "xanh lá": "#22c55e",
+      đỏ: "#ef4444",
+      vàng: "#facc15",
+      kem: "#e7dfcf",
+      be: "#d6cdbd",
+      "nâu nhạt": "#bfa17a",
+      nâu: "#8b5e3c",
+      hồng: "#ec4899",
+      tím: "#8b5cf6",
+    };
+
+    return colorMap[normalized] || "#e5e7eb";
+  };
+
   const decreaseQuantity = () => {
     setQuantity((prev) => Math.max(1, prev - 1));
   };
@@ -80,6 +118,37 @@ const ProductDetail = observer(() => {
     setQuantity(1);
   }, [product?.id]);
 
+  useEffect(() => {
+    if (!product?.id) {
+      setIsComparing(false);
+      return;
+    }
+
+    setIsComparing(isProductCompared(product.id));
+  }, [product?.id]);
+
+  useEffect(() => {
+    void favoriteStore.loadFavorites();
+  }, [favoriteStore, authStore.isAuthenticated]);
+
+  const handleCompareToggle = () => {
+    if (!product?.id) return;
+
+    if (isComparing) {
+      removeProductFromCompare(product.id);
+      setIsComparing(false);
+      return;
+    }
+
+    addProductToCompare(product.id);
+    setIsComparing(true);
+  };
+
+  const handleFavoriteToggle = async () => {
+    if (!product?.id) return;
+    await favoriteStore.toggleFavorite(product.id);
+  };
+
   if (productStore.isLoading) {
     return (
       <div className="container mx-auto px-4 py-12 text-center text-gray-500">
@@ -96,6 +165,8 @@ const ProductDetail = observer(() => {
     );
   }
 
+  const isFavorite = favoriteStore.isFavorite(product.id);
+
   // Warn if product ID doesn't match URL (defensive check)
   if (id && product.id !== Number(id)) {
     console.warn(`Product ID mismatch: URL=${id}, Loaded=${product.id}`);
@@ -103,8 +174,8 @@ const ProductDetail = observer(() => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <div className="md:col-span-7">
           <img
             src={mainImage}
             alt={product.name}
@@ -112,24 +183,32 @@ const ProductDetail = observer(() => {
           />
         </div>
 
-        <div>
+        <div className="md:col-span-5">
           <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
           <div className="flex items-center gap-3 mb-6">
-            <p className="text-3xl text-primary-600 font-bold">
-              {formatPrice(product.price)}
-            </p>
             {hasDiscount && (
-              <p className="text-lg text-gray-400 line-through">
+              <p className="text-xl text-gray-400 line-through">
                 {formatPrice(product.originalPrice!)}
               </p>
             )}
+            <p className="text-3xl text-primary-600 font-bold">
+              {formatPrice(product.price)}{" "}
+              {product.priceUnit && (
+                <span className="text-3xl text-primary-600">
+                  / {displayPriceUnit}
+                </span>
+              )}
+            </p>
           </div>
 
-          {product.description && (
-            <p className="text-gray-700 mb-6">{product.description}</p>
+          {product.shortDescription && (
+            <div
+              className="prose prose-sm max-w-none mb-6"
+              dangerouslySetInnerHTML={{ __html: product.shortDescription }}
+            />
           )}
 
-          {/* Specs từ attributes */}
+          {/* Specs từ attributes
           {product.attributes?.length > 0 && (
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Thuộc tính</h3>
@@ -145,9 +224,9 @@ const ProductDetail = observer(() => {
                 ))}
               </div>
             </div>
-          )}
+          )} */}
 
-          {/* Specs từ JSON */}
+          {/* Specs từ JSON
           {specs && (
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Thông số kỹ thuật</h3>
@@ -160,7 +239,7 @@ const ProductDetail = observer(() => {
                 ))}
               </div>
             </div>
-          )}
+          )} */}
 
           <div className="space-y-2 text-sm text-gray-600 mb-6">
             <div>Mã: {product.sku}</div>
@@ -172,35 +251,55 @@ const ProductDetail = observer(() => {
             <div>Độ dày: {product.thickness}</div>
             <div>Số lượng vân: {product.random}</div>
             <div className="grid grid-cols-[90px_1fr] gap-y-2 items-center">
-              <span>Bề mặt:</span>
-              <div className="rounded-full bg-cyan-400 outline text-white font-semibold p-2 justify-self-start text-center min-w-[160px]">
-                {product.attributes?.find((attr) => attr.name === "Bề mặt")
-                  ?.value || "Không xác định"}
-              </div>
+              {sizeValue && (
+                <>
+                  <span>Kích thước:</span>
+                  <div className="rounded-full bg-cyan-400 outline border border-black text-white font-semibold px-7 py-1 justify-self-start text-center">
+                    {sizeValue}
+                  </div>
+                </>
+              )}
 
-              <span>Chất liệu:</span>
-              <div className="rounded-full bg-cyan-400 outline text-white font-semibold p-2 justify-self-start text-center min-w-[160px]">
-                {product.attributes?.find((attr) => attr.name === "Chất liệu")
-                  ?.value || "Không xác định"}
-              </div>
+              {surfaceValue && (
+                <>
+                  <span>Bề mặt:</span>
+                  <div className="rounded-full bg-cyan-400 outline border border-black  text-white font-semibold px-7 py-1 justify-self-start text-center">
+                    {surfaceValue}
+                  </div>
+                </>
+              )}
 
-              <span>Xuất xứ:</span>
-              <div className="rounded-full bg-cyan-400 outline text-white font-semibold p-2 justify-self-start text-center min-w-[160px]">
-                {product.attributes?.find((attr) => attr.name === "Xuất xứ")
-                  ?.value || "Không xác định"}
-              </div>
+              {materialValue && (
+                <>
+                  <span>Chất liệu:</span>
+                  <div className="rounded-full bg-cyan-400 outline border border-black text-white font-semibold px-7 py-1 justify-self-start text-center">
+                    {materialValue}
+                  </div>
+                </>
+              )}
 
-              <span>Màu sắc:</span>
-              <div className="rounded-full bg-cyan-400 outline text-white font-semibold p-2 justify-self-start text-center min-w-[160px]">
-                {product.attributes?.find((attr) => attr.name === "Màu sắc")
-                  ?.value || "Không xác định"}
-              </div>
+              {originValue && (
+                <>
+                  <span>Xuất xứ:</span>
+                  <div className="rounded-full bg-cyan-400 outline border border-black text-white font-semibold px-7 py-1 justify-self-start text-center">
+                    {originValue}
+                  </div>
+                </>
+              )}
 
-              <span>Kích thước:</span>
-              <div className="rounded-full bg-cyan-400 outline text-white font-semibold p-2 justify-self-start text-center min-w-[160px]">
-                {product.attributes?.find((attr) => attr.name === "Kích thước")
-                  ?.value || "Không xác định"}
-              </div>
+              {colorValue && (
+                <>
+                  <span>Màu sắc:</span>
+                  <div
+                    className="w-8 h-8 rounded-full border border-black justify-self-start"
+                    style={{ backgroundColor: resolveColorValue(colorValue) }}
+                    title={colorValue}
+                    aria-label={`Màu sắc: ${colorValue}`}
+                  >
+                    <span className="sr-only">{colorValue}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <hr className="my-4" />
@@ -208,7 +307,7 @@ const ProductDetail = observer(() => {
             <div className="grid grid-cols-12 gap-3">
               <div className="col-span-4 border border-gray-300 px-2 py-1.5 flex items-center justify-between">
                 <span className="text-gray-600 text-md">
-                  Tổng: {totalByUnit.toFixed(2)} {displayPriceUnit}
+                  Tổng: {totalByUnit.toFixed(2)} {product.salesUnit}
                 </span>
               </div>
               <div className="col-span-3">
@@ -250,12 +349,50 @@ const ProductDetail = observer(() => {
               </div>
             </div>
             <hr />
-            <button className="w-full bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
-              Mua ngay
-            </button>
+          </div>
+          <div className="flex items-center gap-6">
+            <div>
+              <Checkbox
+                color="primary"
+                checked={isComparing}
+                onChange={handleCompareToggle}
+              />
+              {isComparing ? (
+                <Link
+                  to="/compare"
+                  className="text-primary-500 hover:underline"
+                >
+                  Xem so sánh
+                </Link>
+              ) : (
+                <span className="text-primary-500">So sánh</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Heart
+                onClick={() => void handleFavoriteToggle()}
+                className={`ml-4 cursor-pointer ${
+                  isFavorite
+                    ? "text-red-500 fill-red-500"
+                    : "text-gray-500 hover:text-red-500"
+                }`}
+              />
+              {isFavorite ? (
+                <Link
+                  to="/profile?tab=favorites"
+                  className="text-primary-500 hover:underline"
+                >
+                  Đã yêu thích
+                </Link>
+              ) : (
+                <span className="text-primary-500">Yêu thích</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      <ProductExtraInfoTabs product={product} />
     </div>
   );
 });

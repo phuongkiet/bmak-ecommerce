@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
+import RichTextEditor from '@/components/RichTextEditor'
 
 const AddPage = observer(() => {
   const { pageStore } = useStore()
@@ -54,7 +55,13 @@ const AddPage = observer(() => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả (tùy chọn)</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả ngắn" className="w-full border rounded px-3 py-2 h-24" />
+          <RichTextEditor
+            value={description}
+            onChange={setDescription}
+            label="Mô tả"
+            placeholder="Nhập mô tả ngắn cho trang..."
+            minHeight={180}
+          />
         </div>
 
         <div className="flex items-center justify-end gap-3">

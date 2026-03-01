@@ -59,9 +59,9 @@ const Cart = observer(() => {
             {items.map((item) => (
               <div key={`${item.productId}-${item.productSlug}`} className="flex gap-4 bg-white rounded-lg shadow p-4">
                 <img
-                  src={item.pictureUrl || '/placeholder-product.png'}
+                  src={item.pictureUrl || '/images/default/no-image.png'}
                   alt={item.productName}
-                  className="w-24 h-24 object-cover rounded"
+                  className="w-24 h-24 object-contain bg-gray-50 rounded"
                 />
                 <div className="flex-1">
                   <div className="flex justify-between items-start gap-3">

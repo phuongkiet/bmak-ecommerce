@@ -163,12 +163,12 @@ const AdminMedias = observer(() => {
 								}
 							>
 								<img
-									src={image.url}
+									src={image.url || '/images/default/no-image.png'}
 									alt={image.altText || image.fileName}
 									className={
 										viewMode === 'grid'
-											? 'h-32 w-full object-cover'
-											: 'h-16 w-16 rounded-md object-cover'
+											? 'h-32 w-full object-contain bg-gray-50'
+											: 'h-16 w-16 rounded-md object-contain bg-gray-50'
 									}
 								/>
 

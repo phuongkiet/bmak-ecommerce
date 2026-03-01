@@ -73,26 +73,14 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
 
-      // Check if response is empty
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        // Try to get text first to see if there's any content
-        const text = await response.text();
-        if (!text || text.trim() === "") {
-          throw {
-            message: "Empty response from server",
-            status: response.status,
-          } as ApiError;
-        }
-        // If there's text but not JSON, try to parse as JSON anyway
-        try {
-          return JSON.parse(text) as T;
-        } catch {
-          throw {
-            message: `Unexpected response format. Expected JSON but got: ${contentType || "unknown"}`,
-            status: response.status,
-          } as ApiError;
-        }
+      if (
+        response.redirected &&
+        response.url.toLowerCase().includes("/account/login")
+      ) {
+        throw {
+          message: "Unauthorized. Please sign in again.",
+          status: 401,
+        } as ApiError;
       }
 
       if (!response.ok) {
@@ -123,25 +111,63 @@ class ApiClient {
                   errors: errorData.errors,
                 } as ApiError;
               }
-              const data = await retryResp.json();
-              return data;
+
+              const retryContentType = retryResp.headers.get("content-type") || "";
+              if (retryContentType.includes("application/json")) {
+                const data = await retryResp.json();
+                return data;
+              }
+
+              const retryText = (await retryResp.text()).trim();
+              if (retryText === "") return undefined as T;
+              if (retryText.toLowerCase() === "true") return true as T;
+              if (retryText.toLowerCase() === "false") return false as T;
+
+              try {
+                return JSON.parse(retryText) as T;
+              } catch {
+                return retryText as T;
+              }
             }
           } catch (refreshErr) {
             // fall through to throw original 401 error
           }
         }
 
-        const errorData = await response.json().catch(() => ({}));
+        const errorContentType = response.headers.get("content-type") || "";
+        if (errorContentType.includes("application/json")) {
+          const errorData = await response.json().catch(() => ({}));
+          throw {
+            message:
+              errorData.message || `HTTP error! status: ${response.status}`,
+            status: response.status,
+            errors: errorData.errors,
+          } as ApiError;
+        }
+
+        const errorText = (await response.text()).trim();
         throw {
-          message:
-            errorData.message || `HTTP error! status: ${response.status}`,
+          message: errorText || `HTTP error! status: ${response.status}`,
           status: response.status,
-          errors: errorData.errors,
         } as ApiError;
       }
 
-      const data = await response.json();
-      return data;
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+        return data;
+      }
+
+      const text = (await response.text()).trim();
+      if (text === "") return undefined as T;
+      if (text.toLowerCase() === "true") return true as T;
+      if (text.toLowerCase() === "false") return false as T;
+
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        return text as T;
+      }
     } catch (error) {
       // Handle network errors (CORS, connection issues, etc.)
       if (error instanceof TypeError && error.message === "Failed to fetch") {
