@@ -31,12 +31,30 @@ class CartStore {
     return this.cart?.totalSquareMeter || 0
   }
 
+  private getCartStorageKey(): string {
+    const userId = this.rootStore.authStore?.user?.id
+    return userId ? `cartId:user:${userId}` : 'cartId:guest'
+  }
+
   private loadCartId(): string {
-    const stored = localStorage.getItem('cartId')
+    const storageKey = this.getCartStorageKey()
+    const stored = localStorage.getItem(storageKey)
     if (stored) return stored
-    const generated = `guest-${Date.now()}`
-    localStorage.setItem('cartId', generated)
+
+    const userId = this.rootStore.authStore?.user?.id
+    const generated = userId ? `user-${userId}-${Date.now()}` : `guest-${Date.now()}`
+    localStorage.setItem(storageKey, generated)
     return generated
+  }
+
+  async syncCartByAuthState(): Promise<void> {
+    const nextCartId = this.loadCartId()
+    if (nextCartId !== this.cartId) {
+      this.cartId = nextCartId
+      this.cart = null
+    }
+
+    await this.fetchCart()
   }
 
   private setCart(cart: ShoppingCart): void {

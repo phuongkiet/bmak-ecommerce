@@ -9,7 +9,8 @@ import {
   Settings,
   FileText,
   FileEdit,
-  BookOpen
+  BookOpen,
+  ShieldCheck
 } from "lucide-react";
 
 const AdminSidebar = observer(() => {
@@ -20,6 +21,8 @@ const AdminSidebar = observer(() => {
     { path: "/admin/products", icon: Package, label: "Sản phẩm" },
     { path: "/admin/news", icon: BookOpen, label: "Tin tức" },
     { path: "/admin/categories", icon: FileText, label: "Danh mục sản phẩm" },
+    { path: "/admin/vouchers", icon: FileEdit, label: "Voucher" },
+    { path: "/admin/business-rules", icon: ShieldCheck, label: "Quy tắc phí giao hàng" },
     { path: "/admin/customers", icon: Users, label: "Quản lý người dùng" },
     { path: "/admin/orders", icon: ShoppingCart, label: "Đơn hàng" },
     { path: "/admin/reports", icon: BarChart3, label: "Báo cáo" },

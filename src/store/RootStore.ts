@@ -15,6 +15,8 @@ import AttributeStore from './AttributeStore'
 import AttributeValueStore from './AttributeValueStore'
 import FavoriteStore from './FavoriteStore'
 import NewsStore from './NewsStore'
+import VoucherStore from './VoucherStore'
+import BusinessRuleStore from './BusinessRuleStore'
 
 class RootStore {
   commonStore: CommonStore
@@ -33,6 +35,8 @@ class RootStore {
   attributeValueStore: AttributeValueStore
   favoriteStore: FavoriteStore
   newsStore: NewsStore
+  voucherStore: VoucherStore
+  businessRuleStore: BusinessRuleStore
 
   constructor() {
     this.commonStore = new CommonStore(this)
@@ -51,6 +55,8 @@ class RootStore {
     this.attributeValueStore = new AttributeValueStore(this)
     this.favoriteStore = new FavoriteStore(this)
     this.newsStore = new NewsStore(this)
+    this.voucherStore = new VoucherStore(this)
+    this.businessRuleStore = new BusinessRuleStore(this)
     
     makeAutoObservable(this)
   }

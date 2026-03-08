@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { ShoppingCart, User, Search, ChevronDown } from 'lucide-react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
+import * as productApi from '@/agent/api/productApi'
+import type { ProductSummaryDto } from '@/models/Product'
 
 const CustomerHeader = observer(() => {
   const { cartStore, authStore, categoryStore } = useStore()
   const location = useLocation()
   const [isProductsMenuOpen, setIsProductsMenuOpen] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<ProductSummaryDto[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const searchContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     // Fetch categories when component mounts
@@ -27,6 +34,59 @@ const CustomerHeader = observer(() => {
     }
   }, [categoryStore, cartStore])
 
+  useEffect(() => {
+    if (!isSearchOpen) return
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!searchContainerRef.current) return
+      if (!searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [isSearchOpen])
+
+  useEffect(() => {
+    if (!isSearchOpen) return
+
+    const trimmed = searchQuery.trim()
+    if (trimmed.length < 2) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const loadSearchResults = async () => {
+        setIsSearching(true)
+        try {
+          const response = await productApi.getProductsPaged({
+            search: trimmed,
+            pageIndex: 1,
+            pageSize: 8,
+          })
+          setSearchResults(response.products.items)
+        } catch {
+          setSearchResults([])
+        } finally {
+          setIsSearching(false)
+        }
+      }
+
+      void loadSearchResults()
+    }, 300)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchQuery, isSearchOpen])
+
+  useEffect(() => {
+    setIsSearchOpen(false)
+    setSearchQuery('')
+    setSearchResults([])
+  }, [location.pathname])
+
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/'
@@ -39,6 +99,13 @@ const CustomerHeader = observer(() => {
   const handleLogout = async () => {
     await authStore.logout()
     navigate('/')
+  }
+
+  const handleSelectSearchProduct = (productId: number) => {
+    setIsSearchOpen(false)
+    setSearchQuery('')
+    setSearchResults([])
+    navigate(`/products/${productId}`)
   }
 
   return (
@@ -180,12 +247,65 @@ const CustomerHeader = observer(() => {
           {/* Right Section: Search, Cart, Account */}
           <div className="flex items-center gap-4 flex-shrink-0">
             {/* Search Icon */}
-            <button
-              className="p-2 text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
-              aria-label="Tìm kiếm"
-            >
-              <Search size={22} />
-            </button>
+            <div className="relative" ref={searchContainerRef}>
+              <button
+                type="button"
+                className="p-2 text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                aria-label="Tìm kiếm"
+                onClick={() => setIsSearchOpen((prev) => !prev)}
+              >
+                <Search size={22} />
+              </button>
+
+              {isSearchOpen && (
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-[min(92vw,520px)] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="p-3 border-b border-gray-100">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Tìm kiếm..."
+                        className="w-full rounded-full border border-gray-200 py-2.5 pl-4 pr-10 text-gray-800 focus:outline-none focus:border-primary-400"
+                        autoFocus
+                      />
+                      <Search size={20} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    </div>
+                  </div>
+
+                  <div className="max-h-[420px] overflow-y-auto">
+                    {isSearching ? (
+                      <div className="px-4 py-6 text-sm text-gray-500 text-center">Đang tìm kiếm...</div>
+                    ) : searchQuery.trim().length < 2 ? (
+                      <div className="px-4 py-6 text-sm text-gray-500 text-center">Nhập ít nhất 2 ký tự để tìm kiếm</div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="px-4 py-6 text-sm text-gray-500 text-center">Không tìm thấy sản phẩm phù hợp</div>
+                    ) : (
+                      <ul>
+                        {searchResults.map((product) => (
+                          <li key={product.id}>
+                            <button
+                              type="button"
+                              className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              onClick={() => handleSelectSearchProduct(product.id)}
+                            >
+                              <img
+                                src={product.thumbnail || '/images/default/no-image.png'}
+                                alt={product.name}
+                                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                              />
+                              <span className="text-sm font-medium text-gray-800 line-clamp-2">
+                                {product.name}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             
             {/* Cart */}
             <Link

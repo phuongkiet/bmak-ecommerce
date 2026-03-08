@@ -80,12 +80,33 @@ class OrderStore {
     }
   }
 
-  async fetchOrderById(id: number): Promise<void> {
+  async fetchOrdersOfUser(params: OrderParams): Promise<void> {
     this.isLoading = true
     this.error = null
 
     try {
-      const data = await orderApi.getOrderById(id)
+      const result = await orderApi.getOrdersOfUser(params)
+      console.log('API returned orders:', result)
+      runInAction(() => {
+        this.orders = result;
+        console.log('Fetched orders:', this.orders);
+        this.isLoading = false
+      })
+    } catch (error) {
+      runInAction(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to fetch orders'
+        this.isLoading = false
+      })
+      console.error('Error fetching orders:', error)
+    }
+  }
+
+  async fetchOrderById(orderNumber: string): Promise<void> {
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const data = await orderApi.getOrderById(orderNumber)
       runInAction(() => {
         this.selectedOrder = data
         this.isLoading = false

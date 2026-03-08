@@ -23,6 +23,10 @@ import AddProduct from './pages/admin/CreatePage/Product/AddProduct'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminCustomers from './pages/admin/AdminUsers'
 import AdminCategories from './pages/admin/AdminCategories'
+import AdminVouchers from './pages/admin/AdminVouchers'
+import AdminVoucherForm from './pages/admin/AdminVoucherForm'
+import AdminBusinessRules from './pages/admin/AdminBusinessRules'
+import AdminBusinessRuleForm from './pages/admin/AdminBusinessRuleForm'
 import AdminReports from './pages/admin/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminPages from './pages/admin/AdminPages'
@@ -93,6 +97,12 @@ function App() {
                     <Route path="orders" element={<AdminOrders />} />
                     <Route path="customers" element={<AdminCustomers />} />
                     <Route path="categories" element={<AdminCategories />} />
+                    <Route path="vouchers" element={<AdminVouchers />} />
+                    <Route path="vouchers/add" element={<AdminVoucherForm />} />
+                    <Route path="vouchers/:id" element={<AdminVoucherForm />} />
+                    <Route path="business-rules" element={<AdminBusinessRules />} />
+                    <Route path="business-rules/add" element={<AdminBusinessRuleForm />} />
+                    <Route path="business-rules/:id" element={<AdminBusinessRuleForm />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="media" element={<AdminMedias />} />
                     <Route path="pages" element={<AdminPages />} />

@@ -10,4 +10,6 @@ export * from './attributeValueApi'
 export * from './favoriteApi'
 export * from './newsCategoryApi'
 export * from './newsPostApi'
+export * from './voucherApi'
+export * from './businessRuleApi'
 

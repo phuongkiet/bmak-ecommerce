@@ -91,9 +91,9 @@ const AdminDetailProduct = observer(() => {
       isOpen?: boolean;
     }>
   >([]);
-  const [selectedAttributeId, setSelectedAttributeId] = useState<number | null>(
-    null,
-  );
+  const [customSpecifications, setCustomSpecifications] = useState<
+    Array<{ key: string; value: string; isOpen?: boolean }>
+  >([]);
   const [attributeValueOptionsByAttributeId, setAttributeValueOptionsByAttributeId] = useState<
     Record<
       number,
@@ -130,6 +130,81 @@ const AdminDetailProduct = observer(() => {
         extraData: string;
         isOpen: boolean;
       } => Boolean(item));
+  };
+
+  const parseSpecificationsJson = (
+    raw: string | undefined,
+  ): Array<{ key: string; value: string; isOpen?: boolean }> => {
+    if (!raw?.trim()) return [];
+
+    try {
+      const parsed = JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => {
+            if (typeof item === "string") {
+              return { key: item, value: "", isOpen: false };
+            }
+
+            if (item && typeof item === "object") {
+              const obj = item as {
+                key?: string;
+                Key?: string;
+                name?: string;
+                Name?: string;
+                value?: string;
+                Value?: string;
+              };
+              return {
+                key: obj.key ?? obj.Key ?? obj.name ?? obj.Name ?? "",
+                value: obj.value ?? obj.Value ?? "",
+                isOpen: false,
+              };
+            }
+
+            return null;
+          })
+          .filter(
+            (item): item is { key: string; value: string; isOpen: boolean } =>
+              Boolean(item?.key?.trim()),
+          );
+      }
+
+      if (parsed && typeof parsed === "object") {
+        return Object.entries(parsed as Record<string, unknown>)
+          .map(([key, value]) => ({
+            key,
+            value: value == null ? "" : String(value),
+            isOpen: false,
+          }))
+          .filter((item) => item.key.trim() !== "");
+      }
+    } catch (error) {
+      console.error("Failed to parse specificationsJson:", error);
+    }
+
+    return [];
+  };
+
+  const serializeSpecificationsJson = (
+    specs: Array<{ key: string; value: string; isOpen?: boolean }>,
+  ) => {
+    const normalized = specs
+      .map((item) => ({ key: item.key.trim(), value: item.value.trim() }))
+      .filter((item) => item.key !== "");
+
+    if (normalized.length === 0) return "";
+
+    const specificationsObject = normalized.reduce<Record<string, string>>(
+      (acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      },
+      {},
+    );
+
+    return JSON.stringify(specificationsObject);
   };
 
   useEffect(() => {
@@ -178,6 +253,7 @@ const AdminDetailProduct = observer(() => {
             (p as { tags?: Array<{ id: number }> }).tags?.map((t) => t.id) ??
             [],
         }));
+        setCustomSpecifications(parseSpecificationsJson(p.specificationsJson));
 
         // If there is a thumbnail or first image, set preview
         if (p.thumbnail) setImagePreview(p.thumbnail);
@@ -306,35 +382,65 @@ const AdminDetailProduct = observer(() => {
     });
   };
 
-  const handleAddAttribute = () => {
-    if (!selectedAttributeId) return;
+  const handleAddAttribute = (attributeId?: number | null) => {
+    if (!attributeId) return;
 
     if (
       selectedAttributes.some(
-        (attr) => attr.attributeId === selectedAttributeId,
+        (attr) => attr.attributeId === attributeId,
       )
     ) {
       alert("Thuộc tính này đã được thêm vào");
       return;
     }
 
-    const attribute = attributes.find(
-      (attr) => attr.id === selectedAttributeId,
-    );
+    const attribute = attributes.find((attr) => attr.id === attributeId);
     if (attribute) {
-      void loadAttributeValues(selectedAttributeId);
+      void loadAttributeValues(attributeId);
       setSelectedAttributes((prev) => [
         ...prev,
         {
-          attributeId: selectedAttributeId,
+          attributeId,
           attributeValueId: undefined,
           value: "",
           extraData: "",
           isOpen: true,
         },
       ]);
-      setSelectedAttributeId(null);
     }
+  };
+
+  const handleAddCustomSpecification = () => {
+    setCustomSpecifications((prev) => [
+      ...prev,
+      { key: "", value: "", isOpen: true },
+    ]);
+  };
+
+  const handleCustomSpecificationChange = (
+    index: number,
+    field: "key" | "value",
+    newValue: string,
+  ) => {
+    setCustomSpecifications((prev) =>
+      prev.map((item, idx) =>
+        idx === index ? { ...item, [field]: newValue } : item,
+      ),
+    );
+  };
+
+  const handleRemoveCustomSpecification = (index: number) => {
+    setCustomSpecifications((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const toggleCustomSpecificationDropdown = (index: number) => {
+    setCustomSpecifications((prev) =>
+      prev.map((item, idx) =>
+        idx === index
+          ? { ...item, isOpen: !item.isOpen }
+          : item,
+      ),
+    );
   };
 
   const handleRemoveAttribute = (attributeId: number) => {
@@ -477,6 +583,7 @@ const AdminDetailProduct = observer(() => {
         categoryIds: formData.categoryIds || [],
         priceUnit: formData.priceUnit || "m²",
         weight: formData.weight ?? 0,
+        specificationsJson: serializeSpecificationsJson(customSpecifications),
         attributes: productAttributes,
       };
 
@@ -914,24 +1021,20 @@ const AdminDetailProduct = observer(() => {
                 <>
                   <div className="mb-4">
                     <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddCustomSpecification}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        <Plus size={18} />
+                        Thêm mới
+                      </button>
                       <div className="flex-1">
                         <Select
                           className="react-select-container"
                           classNamePrefix="react-select"
-                          value={
-                            selectedAttributeId
-                              ? {
-                                  value: selectedAttributeId,
-                                  label:
-                                    attributes.find(
-                                      (a) => a.id === selectedAttributeId,
-                                    )?.name || "",
-                                }
-                              : null
-                          }
-                          onChange={(option) =>
-                            setSelectedAttributeId(option?.value || null)
-                          }
+                          value={null}
+                          onChange={(option) => handleAddAttribute(option?.value)}
                           options={attributes
                             .filter(
                               (attr) =>
@@ -943,19 +1046,10 @@ const AdminDetailProduct = observer(() => {
                               value: attr.id,
                               label: `${attr.name} (${attr.code})`,
                             }))}
-                          placeholder="Chọn thuộc tính"
+                          placeholder="Thêm hiện có"
                           isSearchable
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleAddAttribute}
-                        disabled={!selectedAttributeId}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        <Plus size={18} />
-                        Thêm
-                      </button>
                     </div>
                   </div>
 
@@ -1148,6 +1242,89 @@ const AdminDetailProduct = observer(() => {
                         trên.
                       </div>
                     )}
+                  </div>
+
+                  <div className="pt-2">
+                      <div className="space-y-2">
+                        {customSpecifications.map((item, idx) => (
+                          <div
+                            key={`custom-spec-${idx}`}
+                            className="border border-gray-200 rounded-lg overflow-hidden"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleCustomSpecificationDropdown(idx)}
+                              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                {item.isOpen ? (
+                                  <ChevronUp size={20} className="text-gray-400" />
+                                ) : (
+                                  <ChevronDown size={20} className="text-gray-400" />
+                                )}
+                                <div className="text-left">
+                                  <span className="font-medium text-gray-900">
+                                    {item.key.trim() || `Thuộc tính custom #${idx + 1}`}
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveCustomSpecification(idx);
+                                }}
+                                className="text-red-600 hover:text-red-700 transition-colors p-1"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </button>
+
+                            {item.isOpen && (
+                              <div className="px-4 pb-4 pt-2 border-t border-gray-200 bg-gray-50">
+                                <div className="space-y-3">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Tên thuộc tính
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={item.key}
+                                      onChange={(e) =>
+                                        handleCustomSpecificationChange(
+                                          idx,
+                                          "key",
+                                          e.target.value,
+                                        )
+                                      }
+                                      placeholder="Nhập tên thuộc tính"
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Giá trị
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={item.value}
+                                      onChange={(e) =>
+                                        handleCustomSpecificationChange(
+                                          idx,
+                                          "value",
+                                          e.target.value,
+                                        )
+                                      }
+                                      placeholder="Nhập giá trị"
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                   </div>
                 </>
               )}

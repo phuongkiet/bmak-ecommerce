@@ -7,7 +7,7 @@ import ProvinceSelectComponent from '@/components/Address/ProvinceSelectComponen
 import WardSelectComponent from '@/components/Address/WardSelectComponent'
 
 const Checkout = observer(() => {
-  const { cartStore, orderStore, provinceStore, wardStore } = useStore()
+  const { cartStore, orderStore, provinceStore, wardStore, voucherStore } = useStore()
 
   // Form state
   const [formData, setFormData] = useState<CreateOrderData>({
@@ -28,6 +28,10 @@ const Checkout = observer(() => {
   const [shippingFee] = useState(0)
   const [discountAmount, setDiscountAmount] = useState(0)
   const [discountCode, setDiscountCode] = useState('')
+  const [billingProvinceId, setBillingProvinceId] = useState('')
+  const [billingWardId, setBillingWardId] = useState('')
+  const [voucherMessage, setVoucherMessage] = useState('')
+  const [voucherMessageType, setVoucherMessageType] = useState<'success' | 'error' | ''>('')
 
   useEffect(() => {
     document.title = 'Thanh toán - GAVICO'
@@ -35,7 +39,7 @@ const Checkout = observer(() => {
   }, [])
 
   const subTotal = cartStore.totalPrice
-  const total = subTotal + shippingFee - discountAmount
+  const total = Math.max(0, subTotal + shippingFee - discountAmount)
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -72,13 +76,52 @@ const Checkout = observer(() => {
     }))
   }
 
-  const applyDiscount = () => {
-    // TODO: Call API to validate discount code
-    if (discountCode === 'GAVICO10') {
-      setDiscountAmount(subTotal * 0.1) // 10% discount
-    } else {
-      alert('Mã giảm giá không hợp lệ')
+  const applyDiscount = async () => {
+    const code = discountCode.trim()
+
+    if (!code) {
       setDiscountAmount(0)
+      setVoucherMessage('Vui lòng nhập mã giảm giá')
+      setVoucherMessageType('error')
+      return
+    }
+
+    if (subTotal <= 0) {
+      setDiscountAmount(0)
+      setVoucherMessage('Giỏ hàng trống, không thể áp dụng mã')
+      setVoucherMessageType('error')
+      return
+    }
+
+    try {
+      const result = await voucherStore.applyVoucher({
+        code,
+        cartId: cartStore.cartId,
+      })
+
+      const calculatedDiscount = Math.max(0, Number(result.discountAmount ?? 0))
+      const finalDiscount = Math.min(calculatedDiscount, subTotal + shippingFee)
+      const isValid = result.isValid ?? finalDiscount > 0
+
+      if (!isValid) {
+        setDiscountAmount(0)
+        setVoucherMessage(result.message || 'Mã giảm giá không hợp lệ')
+        setVoucherMessageType('error')
+        return
+      }
+
+      setDiscountAmount(finalDiscount)
+      setVoucherMessage(
+        result.message ||
+          `Áp dụng mã thành công, giảm ${formatPrice(finalDiscount)}`,
+      )
+      setVoucherMessageType('success')
+    } catch (error) {
+      setDiscountAmount(0)
+      setVoucherMessage(
+        error instanceof Error ? error.message : 'Không thể áp dụng mã giảm giá',
+      )
+      setVoucherMessageType('error')
     }
   }
 
@@ -170,20 +213,26 @@ const Checkout = observer(() => {
                   <label className="block text-sm font-medium mb-2">Tỉnh/Thành phố *</label>
                   <ProvinceSelectComponent
                     data={provinceStore.provinces}
-                    value={formData.billingAddress.province}
+                    value={billingProvinceId}
                     onChange={province => {
+                      const provinceName = province?.name || ''
+                      const provinceId = province?.id || ''
+
                       setFormData(prev => ({
                         ...prev,
                         billingAddress: {
                           ...prev.billingAddress,
-                          province: province?.id || '',
+                          province: provinceName,
                           ward: '', // Reset ward khi đổi province
                         },
                       }))
+
+                      setBillingProvinceId(provinceId)
+                      setBillingWardId('')
                       // Clear và load wards mới
                       wardStore.clearWards()
-                      if (province?.id) {
-                        wardStore.fetchWardsByProvinceId(province.id)
+                      if (provinceId) {
+                        wardStore.fetchWardsByProvinceId(provinceId)
                       }
                     }}
                     isLoading={provinceStore.isLoading}
@@ -194,17 +243,22 @@ const Checkout = observer(() => {
                     <label className="block text-sm font-medium mb-2">Phường/Xã *</label>
                     <WardSelectComponent
                       data={wardStore.wards}
-                      value={formData.billingAddress.ward}
+                      value={billingWardId}
                       onChange={ward => {
+                        const wardName = ward?.name || ''
+                        const wardId = ward?.id || ''
+
                         setFormData(prev => ({
                           ...prev,
                           billingAddress: {
                             ...prev.billingAddress,
-                            ward: ward?.id || '',
+                            ward: wardName,
                           },
                         }))
+
+                        setBillingWardId(wardId)
                       }}
-                      isDisabled={!formData.billingAddress.province}
+                      isDisabled={!billingProvinceId}
                       isLoading={wardStore.isLoading}
                     />
                   </div>
@@ -421,18 +475,36 @@ const Checkout = observer(() => {
                 <input
                   type="text"
                   value={discountCode}
-                  onChange={e => setDiscountCode(e.target.value)}
+                  onChange={e => {
+                    setDiscountCode(e.target.value)
+                    if (voucherMessage) {
+                      setVoucherMessage('')
+                      setVoucherMessageType('')
+                    }
+                  }}
                   placeholder="Nhập mã giảm giá"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
                 <button
                   type="button"
-                  onClick={applyDiscount}
+                  onClick={() => {
+                    void applyDiscount()
+                  }}
+                  disabled={voucherStore.isLoading}
                   className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
                 >
-                  Áp dụng
+                  {voucherStore.isLoading ? 'Đang áp dụng...' : 'Áp dụng'}
                 </button>
               </div>
+              {voucherMessage && (
+                <p
+                  className={`mt-2 text-sm ${
+                    voucherMessageType === 'success' ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {voucherMessage}
+                </p>
+              )}
             </div>
 
             {/* Total */}

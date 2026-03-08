@@ -68,6 +68,8 @@ class AuthStore {
         this.isLoading = false
         this.saveUserToStorage()
       })
+
+      await this.rootStore.cartStore.syncCartByAuthState()
     } catch (error) {
       runInAction(() => {
         this.error = error instanceof Error ? error.message : 'Login failed'
@@ -92,6 +94,8 @@ class AuthStore {
         this.clearUserFromStorage()
         clearCompareStorage()
       })
+
+      await this.rootStore.cartStore.syncCartByAuthState()
     }
   }
 

@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Box, MapPin, User, Heart, LogOut, Trash2 } from "lucide-react";
 import { useStore } from "@/store";
 import { formatPrice } from "@/utils";
+import UserOrdersTable from "@/components/Orders/UserOrdersTable";
 
 type AccountTab = "overview" | "orders" | "address" | "account" | "favorites";
 
@@ -212,9 +213,7 @@ const MyAccount = observer(() => {
           )}
 
           {activeTab === "orders" && (
-            <div className="border border-gray-200 rounded-lg p-6 bg-white text-gray-600">
-              Mục Đơn hàng sẽ được cập nhật sau.
-            </div>
+            <UserOrdersTable />
           )}
 
           {activeTab === "address" && (

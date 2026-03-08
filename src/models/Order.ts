@@ -4,6 +4,7 @@ export interface OrderParams {
   searchTerm?: string;
   status?: OrderStatus;
   sort?: string; 
+  userId?: number;
 }
 
 export interface OrderSummaryDto {
@@ -19,8 +20,10 @@ export interface OrderSummaryDto {
 export interface OrderItemDto {
   productId: number;
   productName: string;
+  productImage?: string;
   unitPrice: number;
   quantity: number;
+  quantitySquareMeter: number;
   totalLineAmount: number;
 }
 
