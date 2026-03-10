@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Select, { SingleValue } from "react-select";
 import { ProvinceDto } from "@/models/Province";
 
@@ -25,6 +25,19 @@ const ProvinceSelectComponent = ({
     const [selectedValue, setSelectedValue] = useState<ProvinceOption | null>(
         value ? { value, label: data.find((p) => p.id === value)?.name || "" } : null
     );
+
+    useEffect(() => {
+        if (!value) {
+            setSelectedValue(null);
+            return;
+        }
+
+        const selected = data.find((p) => p.id === value);
+        setSelectedValue({
+            value,
+            label: selected?.name || "",
+        });
+    }, [value, data]);
 
     const options: ProvinceOption[] = data.map((province) => ({
         value: province.id,

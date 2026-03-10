@@ -5,9 +5,155 @@ import { CreateOrderData, OrderAddressDto } from '@/models/Order'
 import { formatPrice } from '@/utils'
 import ProvinceSelectComponent from '@/components/Address/ProvinceSelectComponent'
 import WardSelectComponent from '@/components/Address/WardSelectComponent'
+import * as businessRuleApi from '@/agent/api/businessRuleApi'
+import { BusinessRuleDto } from '@/models/BusinessRule'
+import type { AddressDto } from '@/models/Address'
+
+const SHIPPING_FEE_ACTION_TYPE = 1
+
+const normalizeRuleKey = (rawKey?: string) => (rawKey || '').trim().toLowerCase()
+
+const normalizeText = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+
+type RuleContext = {
+  subTotal: number
+  province: string
+  ward: string
+}
+
+const tryParseNumber = (value: string): number | null => {
+  const cleaned = value.replace(/[^0-9.-]/g, '')
+  if (!cleaned) return null
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const resolveConditionValue = (key: string, context: RuleContext): string | number | null => {
+  const normalizedKey = normalizeRuleKey(key)
+  const isSubTotalKey =
+    normalizedKey.includes('subtotal') ||
+    normalizedKey.includes('order') ||
+    normalizedKey.includes('amount') ||
+    normalizedKey.includes('carttotal')
+
+  if (isSubTotalKey) {
+    return context.subTotal
+  }
+
+  const isProvinceKey =
+    normalizedKey === 'province' ||
+    normalizedKey === 'city' ||
+    normalizedKey === 'tinh' ||
+    normalizedKey === 'tinhthanh'
+
+  if (isProvinceKey) {
+    return context.province
+  }
+
+  const isWardKey =
+    normalizedKey === 'ward' ||
+    normalizedKey === 'phuong' ||
+    normalizedKey === 'xa'
+
+  if (isWardKey) {
+    return context.ward
+  }
+
+  return null
+}
+
+const evaluateRuleCondition = (
+  condition: BusinessRuleDto['conditions'][number],
+  context: RuleContext,
+): boolean => {
+  const left = resolveConditionValue(condition.conditionKey, context)
+  const rightRaw = condition.conditionValue || ''
+
+  if (left === null) {
+    return false
+  }
+
+  if (typeof left === 'number') {
+    const right = tryParseNumber(rightRaw)
+    if (right === null) return false
+
+    switch (Number(condition.operator)) {
+      case 1:
+        return left > right
+      case 2:
+        return left >= right
+      case 3:
+        return left === right
+      case 4:
+        return normalizeText(String(left)).includes(normalizeText(String(rightRaw)))
+      default:
+        return false
+    }
+  }
+
+  const leftText = normalizeText(String(left))
+  const rightText = normalizeText(String(rightRaw))
+
+  switch (Number(condition.operator)) {
+    case 3:
+      return leftText === rightText
+    case 4:
+      return leftText.includes(rightText)
+    default:
+      return false
+  }
+}
+
+const doesRuleMatch = (rule: BusinessRuleDto, context: RuleContext): boolean => {
+  if (!rule.isActive) return false
+  if (!rule.conditions?.length) return true
+  return rule.conditions.every(condition => evaluateRuleCondition(condition, context))
+}
+
+const calculateShippingFromRules = (
+  rules: BusinessRuleDto[],
+  context: RuleContext,
+): { fee: number; message: string } => {
+  const sortedRules = [...rules]
+    .filter(rule => rule.isActive)
+    .sort((a, b) => a.priority - b.priority)
+
+  let selectedFee: number | null = null
+  let selectedRuleName = ''
+
+  for (const rule of sortedRules) {
+    if (!doesRuleMatch(rule, context)) continue
+
+    const shippingFeeAction = rule.actions?.find(
+      action => Number(action.actionType) === SHIPPING_FEE_ACTION_TYPE,
+    )
+
+    if (shippingFeeAction && selectedFee === null) {
+      selectedFee = Math.max(0, Number(shippingFeeAction.actionValue ?? 0))
+      selectedRuleName = rule.name || ''
+    }
+
+    // Shipping fee uses first matched rule by priority; stopProcessing still respected.
+    if (selectedFee !== null) break
+    if (rule.stopProcessing) break
+  }
+
+  const finalFee = selectedFee ?? 0
+  const message = selectedRuleName
+    ? `Phí ship đang áp dụng theo rule: ${selectedRuleName}`
+    : 'Phí ship mặc định theo cấu hình hiện tại'
+
+  return { fee: finalFee, message }
+}
 
 const Checkout = observer(() => {
-  const { cartStore, orderStore, provinceStore, wardStore, voucherStore } = useStore()
+  const { cartStore, orderStore, provinceStore, wardStore, voucherStore, businessRuleStore, addressStore, authStore } = useStore()
 
   // Form state
   const [formData, setFormData] = useState<CreateOrderData>({
@@ -25,21 +171,150 @@ const Checkout = observer(() => {
     note: '',
   })
 
-  const [shippingFee] = useState(0)
+  const [shippingFee, setShippingFee] = useState(0)
   const [discountAmount, setDiscountAmount] = useState(0)
   const [discountCode, setDiscountCode] = useState('')
   const [billingProvinceId, setBillingProvinceId] = useState('')
   const [billingWardId, setBillingWardId] = useState('')
+  const [shippingProvinceId, setShippingProvinceId] = useState('')
+  const [shippingWardId, setShippingWardId] = useState('')
   const [voucherMessage, setVoucherMessage] = useState('')
   const [voucherMessageType, setVoucherMessageType] = useState<'success' | 'error' | ''>('')
+  const [shippingRules, setShippingRules] = useState<BusinessRuleDto[]>([])
+  const [shippingMessage, setShippingMessage] = useState('')
+
+  const applySavedAddress = (address: AddressDto, target: 'billing' | 'shipping') => {
+    if (target === 'billing') {
+      setFormData(prev => ({
+        ...prev,
+        buyerName: prev.buyerName || address.receiverName,
+        buyerPhone: prev.buyerPhone || address.phone,
+        billingAddress: {
+          ...prev.billingAddress,
+          province: address.provinceName,
+          ward: address.wardName,
+          specificAddress: address.street,
+        },
+      }))
+
+      setBillingProvinceId(address.provinceId)
+      setBillingWardId(address.wardId)
+      void wardStore.fetchWardsByProvinceId(address.provinceId)
+      return
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      receiverName: prev.receiverName || address.receiverName,
+      receiverPhone: prev.receiverPhone || address.phone,
+      shippingAddress: {
+        ...(prev.shippingAddress || { province: '', ward: '', specificAddress: '' }),
+        province: address.provinceName,
+        ward: address.wardName,
+        specificAddress: address.street,
+      },
+    }))
+
+    setShippingProvinceId(address.provinceId)
+    setShippingWardId(address.wardId)
+    void wardStore.fetchWardsByProvinceId(address.provinceId)
+  }
 
   useEffect(() => {
     document.title = 'Thanh toán - GAVICO'
     provinceStore.fetchProvinces()
-  }, [])
+    if (authStore.isAuthenticated) {
+      void addressStore.fetchMyAddresses()
+    }
+
+    const loadShippingFeeFromBusinessRule = async () => {
+      try {
+        await businessRuleStore.fetchBusinessRules({
+          pageIndex: 1,
+          pageSize: 100,
+          isActive: true,
+        })
+
+        const rules = businessRuleStore.businessRules?.items || []
+        const activeRules = [...rules]
+          .filter(rule => rule.isActive)
+          .sort((a, b) => a.priority - b.priority)
+
+        // The list endpoint can omit actions/conditions; fetch rule details by id.
+        const detailedRules = await Promise.all(
+          activeRules.map(async rule => {
+            try {
+              return await businessRuleApi.getBusinessRuleById(rule.id)
+            } catch {
+              return null
+            }
+          }),
+        )
+
+        const validDetailedRules = detailedRules.filter(
+          (rule): rule is BusinessRuleDto => rule !== null,
+        )
+
+        setShippingRules(validDetailedRules)
+      } catch {
+        setShippingRules([])
+        setShippingFee(0)
+        setShippingMessage('Chưa tải được business rule phí ship')
+      }
+    }
+
+    void loadShippingFeeFromBusinessRule()
+  }, [addressStore, authStore.isAuthenticated])
+
+  useEffect(() => {
+    if (!authStore.user?.email) return
+
+    setFormData(prev => ({
+      ...prev,
+      buyerEmail: authStore.user?.email || prev.buyerEmail,
+    }))
+  }, [authStore.user?.email])
+
+  useEffect(() => {
+    if (!addressStore.addresses.length) return
+    if (formData.billingAddress.specificAddress) return
+
+    const defaultAddress = addressStore.addresses[0]
+    if (!defaultAddress) return
+
+    applySavedAddress(defaultAddress, 'billing')
+  }, [addressStore.addresses, formData.billingAddress.specificAddress])
+
+  useEffect(() => {
+    if (!formData.shipToDifferentAddress) return
+    if (!addressStore.addresses.length) return
+    if (formData.shippingAddress?.specificAddress) return
+
+    const defaultAddress = addressStore.addresses[0]
+    if (!defaultAddress) return
+
+    applySavedAddress(defaultAddress, 'shipping')
+  }, [
+    formData.shipToDifferentAddress,
+    formData.shippingAddress?.specificAddress,
+    addressStore.addresses,
+  ])
 
   const subTotal = cartStore.totalPrice
   const total = Math.max(0, subTotal + shippingFee - discountAmount)
+  const activeAddress = formData.shipToDifferentAddress ? formData.shippingAddress : formData.billingAddress
+  const activeProvince = activeAddress?.province || ''
+  const activeWard = activeAddress?.ward || ''
+
+  useEffect(() => {
+    const { fee, message } = calculateShippingFromRules(shippingRules, {
+      subTotal,
+      province: activeProvince,
+      ward: activeWard,
+    })
+    setShippingFee(fee)
+    setShippingMessage(message)
+  }, [shippingRules, subTotal, activeProvince, activeWard])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -334,19 +609,24 @@ const Checkout = observer(() => {
                     <label className="block text-sm font-medium mb-2">Tỉnh/Thành phố *</label>
                     <ProvinceSelectComponent
                       data={provinceStore.provinces}
-                      value={formData.shippingAddress?.province || ''}
+                        value={shippingProvinceId}
                       onChange={province => {
+                          const provinceName = province?.name || ''
+                          const provinceId = province?.id || ''
+
                         setFormData(prev => ({
                           ...prev,
                           shippingAddress: {
                             ...(prev.shippingAddress || { province: '', ward: '', specificAddress: '' }),
-                            province: province?.id || '',
+                              province: provinceName,
                             ward: '', // Reset ward khi đổi province
                           },
                         }))
+                          setShippingProvinceId(provinceId)
+                          setShippingWardId('')
                         // Clear và load wards mới cho shipping address
-                        if (province?.id) {
-                          wardStore.fetchWardsByProvinceId(province.id)
+                          if (provinceId) {
+                            wardStore.fetchWardsByProvinceId(provinceId)
                         }
                       }}
                       isLoading={provinceStore.isLoading}
@@ -356,17 +636,21 @@ const Checkout = observer(() => {
                     <label className="block text-sm font-medium mb-2">Phường/Xã *</label>
                     <WardSelectComponent
                       data={wardStore.wards}
-                      value={formData.shippingAddress?.ward || ''}
+                      value={shippingWardId}
                       onChange={ward => {
+                        const wardName = ward?.name || ''
+                        const wardId = ward?.id || ''
+
                         setFormData(prev => ({
                           ...prev,
                           shippingAddress: {
                             ...(prev.shippingAddress || { province: '', ward: '', specificAddress: '' }),
-                            ward: ward?.id || '',
+                            ward: wardName,
                           },
                         }))
+                        setShippingWardId(wardId)
                       }}
-                      isDisabled={!formData.shippingAddress?.province}
+                      isDisabled={!shippingProvinceId}
                       isLoading={wardStore.isLoading}
                     />
                   </div>
@@ -459,6 +743,9 @@ const Checkout = observer(() => {
                 <span className="text-gray-600">Phí vận chuyển:</span>
                 <span className="font-medium">{formatPrice(shippingFee)}</span>
               </div>
+              {shippingMessage && (
+                <p className="text-xs text-gray-500">{shippingMessage}</p>
+              )}
 
               {discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">

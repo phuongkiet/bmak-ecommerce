@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Select, { SingleValue } from "react-select";
 import { WardDto } from "@/models/Ward";
 
@@ -25,6 +25,19 @@ const WardSelectComponent = ({
     const [selectedValue, setSelectedValue] = useState<WardOption | null>(
         value ? { value, label: data.find((w) => w.id === value)?.name || "" } : null
     );
+
+    useEffect(() => {
+        if (!value) {
+            setSelectedValue(null);
+            return;
+        }
+
+        const selected = data.find((w) => w.id === value);
+        setSelectedValue({
+            value,
+            label: selected?.name || "",
+        });
+    }, [value, data]);
 
     const options: WardOption[] = data.map((ward) => ({
         value: ward.id,

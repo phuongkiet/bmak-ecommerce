@@ -12,4 +12,5 @@ export * from './newsCategoryApi'
 export * from './newsPostApi'
 export * from './voucherApi'
 export * from './businessRuleApi'
+export * from './addressApi'
 

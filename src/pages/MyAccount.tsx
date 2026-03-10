@@ -5,6 +5,8 @@ import { Box, MapPin, User, Heart, LogOut, Trash2 } from "lucide-react";
 import { useStore } from "@/store";
 import { formatPrice } from "@/utils";
 import UserOrdersTable from "@/components/Orders/UserOrdersTable";
+import UserAddressTable from "@/components/Address/UserAddressTable";
+import UserAccountDetail from "@/components/Account/UserAccountDetail";
 
 type AccountTab = "overview" | "orders" | "address" | "account" | "favorites";
 
@@ -216,17 +218,9 @@ const MyAccount = observer(() => {
             <UserOrdersTable />
           )}
 
-          {activeTab === "address" && (
-            <div className="border border-gray-200 rounded-lg p-6 bg-white text-gray-600">
-              Mục Địa chỉ sẽ được cập nhật sau.
-            </div>
-          )}
+          {activeTab === "address" && <UserAddressTable />}
 
-          {activeTab === "account" && (
-            <div className="border border-gray-200 rounded-lg p-6 bg-white text-gray-600">
-              Mục Tài khoản sẽ được cập nhật sau.
-            </div>
-          )}
+          {activeTab === "account" && <UserAccountDetail />}
         </section>
       </div>
     </div>

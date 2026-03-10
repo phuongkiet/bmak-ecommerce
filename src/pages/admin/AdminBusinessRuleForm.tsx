@@ -12,6 +12,7 @@ import type {
 
 import {
   RULE_ACTION_TYPE_OPTIONS as ruleActionTypeOptions,
+  RULE_CONDITION_KEY_OPTIONS as ruleConditionKeyOptions,
   RULE_OPERATOR_OPTIONS as ruleOperatorOptions,
 } from "@/models/BusinessRule";
 
@@ -388,12 +389,18 @@ const AdminBusinessRuleForm = observer(() => {
               <div key={`condition-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end border border-gray-200 rounded-lg p-3">
                 <div className="md:col-span-4">
                   <label className="block text-xs font-medium text-gray-600 mb-1">ConditionKey</label>
-                  <input
-                    type="text"
+                  <select
                     value={condition.conditionKey}
                     onChange={(e) => updateCondition(index, { conditionKey: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
+                  >
+                    <option value="">Chọn ConditionKey</option>
+                    {ruleConditionKeyOptions.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.value} - {item.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="md:col-span-3">
                   <label className="block text-xs font-medium text-gray-600 mb-1">Operator (enum number)</label>
@@ -488,6 +495,7 @@ const AdminBusinessRuleForm = observer(() => {
           </div>
         </div>
       </form>
+
     </div>
   );
 });

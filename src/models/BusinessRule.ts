@@ -19,6 +19,12 @@ export interface RuleOptionItem {
   label: string;
 }
 
+export interface RuleTextOptionItem {
+  value: string;
+  label: string;
+  description?: string;
+}
+
 export const RULE_OPERATOR_OPTIONS: RuleOptionItem[] = [
   { value: 1, label: "GreaterThan (>)" },
   { value: 2, label: "GreaterThanOrEqual (>=)" },
@@ -31,6 +37,12 @@ export const RULE_ACTION_TYPE_OPTIONS: RuleOptionItem[] = [
   { value: 2, label: "DiscountPercentage" },
   { value: 3, label: "DiscountAmount" },
   { value: 4, label: "FreeGift" },
+];
+
+export const RULE_CONDITION_KEY_OPTIONS: RuleTextOptionItem[] = [
+  { value: "subTotal", label: "Tổng đơn hàng", description: "So sánh theo tổng tiền giỏ hàng" },
+  { value: "province", label: "Tỉnh/Thành phố", description: "So sánh theo tỉnh/thành người dùng chọn" },
+  { value: "ward", label: "Phường/Xã", description: "So sánh theo phường/xã người dùng chọn" },
 ];
 
 export interface BusinessRuleConditionInput {
