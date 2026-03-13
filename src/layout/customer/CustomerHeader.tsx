@@ -25,14 +25,12 @@ const CustomerHeader = observer(() => {
         // Error is handled in store, no need to log here
       })
     }
+  }, [categoryStore])
 
-    // Fetch cart badge count once
-    if (!cartStore.cart && !cartStore.isLoading) {
-      cartStore.fetchCart().catch(() => {
-        // Errors surfaced via notifications
-      })
-    }
-  }, [categoryStore, cartStore])
+  useEffect(() => {
+    // Always re-sync cart when auth state changes to ensure correct cart key per user/guest.
+    void cartStore.syncCartByAuthState()
+  }, [cartStore, authStore.isAuthenticated, authStore.user?.id])
 
   useEffect(() => {
     if (!isSearchOpen) return

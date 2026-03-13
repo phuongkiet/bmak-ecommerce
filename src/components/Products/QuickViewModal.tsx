@@ -21,6 +21,7 @@ const QuickViewModal = observer(
     const [error, setError] = useState<string | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [activeImage, setActiveImage] = useState<string>("");
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
 
     useEffect(() => {
       if (!isOpen || !productId) return;
@@ -77,6 +78,8 @@ const QuickViewModal = observer(
       if (!product) return 1;
       return product.stockQuantity > 0 ? product.stockQuantity : 1;
     }, [product]);
+
+    const isOutOfStock = (product?.stockQuantity ?? 0) <= 0;
 
     const totalByUnit = useMemo(() => {
       const factor = Number(product?.conversionFactor ?? 1);
@@ -139,13 +142,33 @@ const QuickViewModal = observer(
 
     const handleAddToCart = async () => {
       if (!product?.id) return;
-      await cartStore.addItem(product.id, quantity);
+      setIsAddingToCart(true);
+      try {
+        await cartStore.addItem(product.id, quantity);
+      } finally {
+        setIsAddingToCart(false);
+      }
     };
 
     const handleFavoriteToggle = async () => {
       if (!product?.id) return;
       await favoriteStore.toggleFavorite(product.id);
     };
+
+    useEffect(() => {
+      if (!product?.id) return;
+
+      if (isAddingToCart || isOutOfStock) {
+        console.info("[QuickViewModal] Add-to-cart disabled", {
+          productId: product.id,
+          stockQuantity: product.stockQuantity,
+          isOutOfStock,
+          isAddingToCart,
+          quantity,
+          maxQuantity,
+        });
+      }
+    }, [product?.id, product?.stockQuantity, isOutOfStock, isAddingToCart, quantity, maxQuantity]);
 
     if (!isOpen) return null;
 
@@ -333,9 +356,9 @@ const QuickViewModal = observer(
                         type="button"
                         className="w-full h-full min-h-[44px] bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         onClick={() => void handleAddToCart()}
-                        disabled={cartStore.isLoading || product.stockQuantity <= 0}
+                        disabled={isAddingToCart || isOutOfStock}
                       >
-                        Thêm vào giỏ hàng
+                        {isAddingToCart ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
                       </button>
                     </div>
                   </div>

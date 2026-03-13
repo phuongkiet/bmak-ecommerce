@@ -17,6 +17,7 @@ const ProductDetail = observer(() => {
   const { productStore, cartStore, favoriteStore, authStore } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [isComparing, setIsComparing] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -59,6 +60,8 @@ const ProductDetail = observer(() => {
     if (!product) return 1;
     return product.stockQuantity > 0 ? product.stockQuantity : 1;
   }, [product]);
+
+  const isOutOfStock = (product?.stockQuantity ?? 0) <= 0;
 
   const getAttrValue = (name: string) =>
     product?.attributes?.find((attr) => attr.name === name)?.value;
@@ -128,6 +131,21 @@ const ProductDetail = observer(() => {
   }, [product?.id]);
 
   useEffect(() => {
+    if (!product?.id) return;
+
+    if (isAddingToCart || isOutOfStock) {
+      console.info("[ProductDetail] Add-to-cart disabled", {
+        productId: product.id,
+        stockQuantity: product.stockQuantity,
+        isOutOfStock,
+        isAddingToCart,
+        quantity,
+        maxQuantity,
+      });
+    }
+  }, [product?.id, product?.stockQuantity, isOutOfStock, isAddingToCart, quantity, maxQuantity]);
+
+  useEffect(() => {
     void favoriteStore.loadFavorites();
   }, [favoriteStore, authStore.isAuthenticated]);
 
@@ -147,6 +165,16 @@ const ProductDetail = observer(() => {
   const handleFavoriteToggle = async () => {
     if (!product?.id) return;
     await favoriteStore.toggleFavorite(product.id);
+  };
+
+  const handleAddToCart = async () => {
+    if (!product?.id) return;
+    setIsAddingToCart(true);
+    try {
+      await cartStore.addItem(product.id, quantity);
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   if (productStore.isLoading) {
@@ -341,10 +369,10 @@ const ProductDetail = observer(() => {
               <div className="col-span-5 w-full">
                 <button
                   className="w-full bg-primary-600 text-white py-2 px-4 font-semibold text-sm hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px]"
-                  onClick={() => cartStore.addItem(product.id, quantity)}
-                  disabled={cartStore.isLoading || product.stockQuantity <= 0}
+                  onClick={() => void handleAddToCart()}
+                  disabled={isAddingToCart || isOutOfStock}
                 >
-                  Thêm vào giỏ hàng
+                  {isAddingToCart ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
                 </button>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 import RootStore from './RootStore'
-import { CategoryDto } from '@/models/Category'
+import { CategoryDto, CreateCategoryCommand, UpdateCategoryCommand } from '@/models/Category'
 import * as categoryApi from '@/agent/api/categoryApi'
 import { categories as mockCategories } from '@/data/mockCategories'
 
@@ -44,6 +44,114 @@ class CategoryStore {
           }))
         }
       })
+    }
+  }
+
+  async fetchAdminCategories(params?: { pageIndex?: number; pageSize?: number; search?: string }): Promise<void> {
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const data = await categoryApi.getAdminCategories({
+        pageIndex: params?.pageIndex ?? 1,
+        pageSize: params?.pageSize ?? 1000,
+        search: params?.search,
+      })
+
+      runInAction(() => {
+        this.categories = data.items
+        this.isLoading = false
+      })
+    } catch (error: any) {
+      runInAction(() => {
+        this.error = error?.message || 'Failed to fetch categories'
+        this.isLoading = false
+      })
+    }
+  }
+
+  async createAdminCategory(command: CreateCategoryCommand): Promise<boolean> {
+    this.isLoading = true
+    this.error = null
+    try {
+      const id = await categoryApi.createAdminCategory(command)
+      runInAction(() => {
+        this.categories = [
+          {
+            id,
+            name: command.name,
+            slug: command.slug,
+            description: command.description,
+            parentId: command.parentId ?? null,
+            parentName: this.categories.find(c => c.id === command.parentId)?.name ?? null,
+            image: command.image,
+            sortOrder: command.sortOrder,
+            isActive: command.isActive ?? true,
+          },
+          ...this.categories,
+        ]
+        this.isLoading = false
+      })
+      return true
+    } catch (error: any) {
+      runInAction(() => {
+        this.error = error?.message || 'Failed to create category'
+        this.isLoading = false
+      })
+      return false
+    }
+  }
+
+  async updateAdminCategory(id: number, command: UpdateCategoryCommand): Promise<boolean> {
+    this.isLoading = true
+    this.error = null
+    try {
+      const success = await categoryApi.updateAdminCategory(id, { ...command, id })
+      runInAction(() => {
+        if (success) {
+          this.categories = this.categories.map(category =>
+            category.id === id
+              ? {
+                  ...category,
+                  ...command,
+                  parentName:
+                    command.parentId != null
+                      ? this.categories.find(c => c.id === command.parentId)?.name ?? null
+                      : null,
+                }
+              : category
+          )
+        }
+        this.isLoading = false
+      })
+      return success
+    } catch (error: any) {
+      runInAction(() => {
+        this.error = error?.message || 'Failed to update category'
+        this.isLoading = false
+      })
+      return false
+    }
+  }
+
+  async deleteAdminCategory(id: number): Promise<boolean> {
+    this.isLoading = true
+    this.error = null
+    try {
+      const success = await categoryApi.deleteAdminCategory(id)
+      runInAction(() => {
+        if (success) {
+          this.categories = this.categories.filter(category => category.id !== id)
+        }
+        this.isLoading = false
+      })
+      return success
+    } catch (error: any) {
+      runInAction(() => {
+        this.error = error?.message || 'Failed to delete category'
+        this.isLoading = false
+      })
+      return false
     }
   }
 

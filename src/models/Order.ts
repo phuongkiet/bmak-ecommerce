@@ -31,7 +31,7 @@ export interface OrderDto {
   id: number;
   orderCode: string;
   orderDate: string;
-  status: string;
+  status: OrderStatus;
   paymentMethod: string;
   subTotal: number;
   shippingFee: number;
@@ -47,7 +47,7 @@ export interface OrderDto {
   orderItems: OrderItemDto[];
 }
 
-export type OrderStatus = 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled'
+export type OrderStatus = 'Pending' | 'Confirmed' | 'Shipping' | 'Completed' | 'Cancelled' | 'Returned'
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded'
 
 export interface OrderAddressDto {

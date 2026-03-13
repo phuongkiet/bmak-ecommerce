@@ -870,14 +870,14 @@ const AddProduct = observer(() => {
                           className="border border-gray-200 rounded-lg overflow-hidden"
                         >
                           {/* Dropdown Header */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggleAttributeDropdown(selectedAttr.attributeId)
-                            }
-                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
+                          <div className="w-full flex items-center justify-between hover:bg-gray-50 transition-colors">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleAttributeDropdown(selectedAttr.attributeId)
+                              }
+                              className="flex flex-1 items-center gap-2 p-4 text-left"
+                            >
                               {isOpen ? (
                                 <ChevronUp
                                   size={20}
@@ -897,18 +897,15 @@ const AddProduct = observer(() => {
                                   ({attribute.code})
                                 </span>
                               </div>
-                            </div>
+                            </button>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveAttribute(selectedAttr.attributeId);
-                              }}
-                              className="text-red-600 hover:text-red-700 transition-colors p-1"
+                              onClick={() => handleRemoveAttribute(selectedAttr.attributeId)}
+                              className="text-red-600 hover:text-red-700 transition-colors p-4"
                             >
                               <Trash2 size={18} />
                             </button>
-                          </button>
+                          </div>
 
                           {/* Dropdown Content */}
                           {isOpen && (
@@ -1023,14 +1020,14 @@ const AddProduct = observer(() => {
                           key={`custom-spec-${idx}`}
                           className="border border-gray-200 rounded-lg overflow-hidden"
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggleCustomSpecificationDropdown(idx)
-                            }
-                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
+                          <div className="w-full flex items-center justify-between hover:bg-gray-50 transition-colors">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleCustomSpecificationDropdown(idx)
+                              }
+                              className="flex flex-1 items-center gap-2 p-4 text-left"
+                            >
                               {item.isOpen ? (
                                 <ChevronUp
                                   size={20}
@@ -1048,18 +1045,15 @@ const AddProduct = observer(() => {
                                     `Thuộc tính custom #${idx + 1}`}
                                 </span>
                               </div>
-                            </div>
+                            </button>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveCustomSpecification(idx);
-                              }}
-                              className="text-red-600 hover:text-red-700 transition-colors p-1"
+                              onClick={() => handleRemoveCustomSpecification(idx)}
+                              className="text-red-600 hover:text-red-700 transition-colors p-4"
                             >
                               <Trash2 size={18} />
                             </button>
-                          </button>
+                          </div>
 
                           {item.isOpen && (
                             <div className="px-4 pb-4 pt-2 border-t border-gray-200 bg-gray-50">

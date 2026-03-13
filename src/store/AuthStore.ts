@@ -29,6 +29,9 @@ class AuthStore {
     
     // Load user from localStorage on init
     this.loadUserFromStorage()
+    if (this.isAuthenticated) {
+      void this.rootStore.cartStore.syncCartByAuthState()
+    }
     void this.validateSessionOnStartup()
   }
 

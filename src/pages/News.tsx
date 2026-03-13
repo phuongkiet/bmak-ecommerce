@@ -53,7 +53,8 @@ const News = observer(() => {
     id: category.id,
     name: category.name,
     slug: category.slug,
-    count: publishedPosts.filter((post) => post.categoryId === category.id).length,
+    count: publishedPosts.filter((post) => post.categoryId === category.id)
+      .length,
   }));
 
   const formatNewsDate = (post: NewsPostSummaryDto) =>
@@ -109,8 +110,9 @@ const News = observer(() => {
                 </div>
               )}
 
-              {!newsStore.isLoadingPosts && !newsStore.error && (
-                filteredArticles.length === 0 ? (
+              {!newsStore.isLoadingPosts &&
+                !newsStore.error &&
+                (filteredArticles.length === 0 ? (
                   <div className="bg-gray-50 rounded-lg p-12 text-center">
                     <p className="text-gray-500 text-lg">
                       Nội dung tin tức đang được cập nhật
@@ -128,7 +130,11 @@ const News = observer(() => {
                           className="flex-shrink-0 w-64 h-48 cursor-pointer"
                           onClick={() => goToNewsDetail(article.id)}
                         >
-                          <img src={getThumbnail(article)} alt={article.title} className="w-full h-full object-contain bg-gray-50 rounded-lg" />
+                          <img
+                            src={getThumbnail(article)}
+                            alt={article.title}
+                            className="w-full h-full object-contain bg-gray-50 rounded-lg"
+                          />
                         </div>
 
                         {/* Content */}
@@ -150,7 +156,8 @@ const News = observer(() => {
                           </h2>
 
                           <p className="text-gray-600 text-base leading-relaxed mb-4">
-                            {article.summary || "Nội dung tin tức đang được cập nhật"}
+                            {article.summary ||
+                              "Nội dung tin tức đang được cập nhật"}
                           </p>
 
                           {/* Meta */}
@@ -172,8 +179,7 @@ const News = observer(() => {
                       </div>
                     </article>
                   ))
-                )
-              )}
+                ))}
             </div>
           </div>
 
@@ -186,27 +192,33 @@ const News = observer(() => {
                   DANH MỤC
                 </h3>
                 <ul className="space-y-3">
-                  {categories.map((cat) => (
-                    <li key={cat.id}>
-                      <button
-                        onClick={() =>
-                          setSelectedCategory(
-                            selectedCategory === cat.id ? null : cat.id,
-                          )
-                        }
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                          selectedCategory === cat.id
-                            ? "bg-primary-50 text-primary-700"
-                            : "hover:bg-gray-50 text-gray-700"
-                        }`}
-                      >
-                        <span className="font-medium">{cat.name}</span>
-                        <span className="text-sm text-gray-500">
-                          ({cat.count})
-                        </span>
-                      </button>
+                  {categories.length > 0 ? (
+                    categories.map((cat) => (
+                      <li key={cat.id}>
+                        <button
+                          onClick={() =>
+                            setSelectedCategory(
+                              selectedCategory === cat.id ? null : cat.id,
+                            )
+                          }
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+                            selectedCategory === cat.id
+                              ? "bg-primary-50 text-primary-700"
+                              : "hover:bg-gray-50 text-gray-700"
+                          }`}
+                        >
+                          <span className="font-medium">{cat.name}</span>
+                          <span className="text-sm text-gray-500">
+                            ({cat.count})
+                          </span>
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <li>
+                      <p className="text-gray-500">Không có danh mục nào</p>
                     </li>
-                  ))}
+                  )}
                 </ul>
               </div>
 
@@ -216,39 +228,43 @@ const News = observer(() => {
                   GẦN ĐÂY
                 </h3>
                 <div className="space-y-4">
-                  {recentArticles.map((article) => (
-                    <div
-                      key={article.id}
-                      className="pb-4 border-b last:border-b-0 last:pb-0"
-                    >
-                      <div className="flex gap-3">
-                        {/* Thumbnail */}
-                        <div
-                          className="flex-shrink-0 w-20 h-20 cursor-pointer"
-                          onClick={() => goToNewsDetail(article.id)}
-                        >
-                          <img
-                            src={getThumbnail(article)}
-                            alt={article.title}
-                            className="w-full h-full object-contain bg-gray-50 rounded"
-                          />
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <h4
-                            className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-primary-600 transition-colors cursor-pointer"
+                  {recentArticles.length > 0 ? (
+                    recentArticles.map((article) => (
+                      <div
+                        key={article.id}
+                        className="pb-4 border-b last:border-b-0 last:pb-0"
+                      >
+                        <div className="flex gap-3">
+                          {/* Thumbnail */}
+                          <div
+                            className="flex-shrink-0 w-20 h-20 cursor-pointer"
                             onClick={() => goToNewsDetail(article.id)}
                           >
-                            {article.title}
-                          </h4>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {formatNewsDate(article)}
-                          </p>
+                            <img
+                              src={getThumbnail(article)}
+                              alt={article.title}
+                              className="w-full h-full object-contain bg-gray-50 rounded"
+                            />
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <h4
+                              className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-primary-600 transition-colors cursor-pointer"
+                              onClick={() => goToNewsDetail(article.id)}
+                            >
+                              {article.title}
+                            </h4>
+                            <p className="text-xs text-gray-500 mt-2">
+                              {formatNewsDate(article)}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-500">Không có bài viết nào</p>
+                  )}
                 </div>
               </div>
             </div>

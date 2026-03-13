@@ -39,3 +39,14 @@ export interface CreateCategoryCommand {
   isActive?: boolean
 }
 
+export interface UpdateCategoryCommand {
+  id: number
+  name: string
+  slug: string
+  description?: string
+  parentId?: number | null
+  image?: string
+  sortOrder?: number
+  isActive?: boolean
+}
+

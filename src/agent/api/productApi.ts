@@ -8,13 +8,53 @@ import {
 import { ProductSpecParamsBuilder, type ProductSpecParams } from '@/models/common/ProductSpecParams'
 import { ApiResponse } from './apiClient'
 
+const normalizeProductsArray = (rawResponse: unknown): ProductDto[] => {
+  const unwrapApiResponse =
+    rawResponse && typeof rawResponse === 'object' && 'value' in (rawResponse as Record<string, unknown>)
+      ? (rawResponse as ApiResponse<unknown>).value
+      : rawResponse
+
+  if (Array.isArray(unwrapApiResponse)) {
+    return unwrapApiResponse as ProductDto[]
+  }
+
+  if (
+    unwrapApiResponse &&
+    typeof unwrapApiResponse === 'object' &&
+    'items' in (unwrapApiResponse as Record<string, unknown>) &&
+    Array.isArray((unwrapApiResponse as { items: unknown[] }).items)
+  ) {
+    return (unwrapApiResponse as { items: ProductDto[] }).items
+  }
+
+  if (
+    unwrapApiResponse &&
+    typeof unwrapApiResponse === 'object' &&
+    'products' in (unwrapApiResponse as Record<string, unknown>)
+  ) {
+    const productsNode = (unwrapApiResponse as { products?: unknown }).products
+
+    if (Array.isArray(productsNode)) {
+      return productsNode as ProductDto[]
+    }
+
+    if (
+      productsNode &&
+      typeof productsNode === 'object' &&
+      'items' in (productsNode as Record<string, unknown>) &&
+      Array.isArray((productsNode as { items: unknown[] }).items)
+    ) {
+      return (productsNode as { items: ProductDto[] }).items
+    }
+  }
+
+  return []
+}
+
 // Legacy: get all products (không paging) - nếu backend không hỗ trợ, có thể bỏ
 export const getProducts = async (): Promise<ProductDto[]> => {
-  const response = await apiClient.get<ApiResponse<ProductDto[]> | ProductDto[]>('/products')
-  if (Array.isArray(response)) {
-    return response
-  }
-  return (response as ApiResponse<ProductDto[]>).value || []
+  const response = await apiClient.get<unknown>('/products')
+  return normalizeProductsArray(response)
 }
 
 export const getProductById = async (id: number): Promise<ProductDto> => {
@@ -27,21 +67,13 @@ export const getProductById = async (id: number): Promise<ProductDto> => {
 }
 
 export const getProductsByCategory = async (categoryId: number): Promise<ProductDto[]> => {
-  const response = await apiClient.get<ApiResponse<ProductDto[]> | ProductDto[]>(`/products?categoryId=${categoryId}`)
-  // Handle both response formats
-  if (Array.isArray(response)) {
-    return response
-  }
-  return (response as ApiResponse<ProductDto[]>).value || []
+  const response = await apiClient.get<unknown>(`/products?categoryId=${categoryId}`)
+  return normalizeProductsArray(response)
 }
 
 export const searchProducts = async (query: string): Promise<ProductDto[]> => {
-  const response = await apiClient.get<ApiResponse<ProductDto[]> | ProductDto[]>(`/products/search?q=${encodeURIComponent(query)}`)
-  // Handle both response formats
-  if (Array.isArray(response)) {
-    return response
-  }
-  return (response as ApiResponse<ProductDto[]>).value || []
+  const response = await apiClient.get<unknown>(`/products/search?q=${encodeURIComponent(query)}`)
+  return normalizeProductsArray(response)
 }
 
 export const getProductCategories = async (): Promise<ProductCategory[]> => {

@@ -13,4 +13,5 @@ export * from './newsPostApi'
 export * from './voucherApi'
 export * from './businessRuleApi'
 export * from './addressApi'
+export * from './reportApi'
 

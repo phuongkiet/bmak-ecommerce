@@ -5,10 +5,11 @@ import {
 	UserSummaryDto,
 	CreateNewUserRequest,
 	UpdateUserRequest,
+	ChangePasswordAdminRequest,
 	UserSpecParams,
 } from '@/models/User'
 
-// GET /User (paged)
+// GET /admin/users (paged)
 export const getUsers = async (
 	params: Partial<UserSpecParams>
 ): Promise<PaginatedResult<UserSummaryDto[]>> => {
@@ -18,7 +19,7 @@ export const getUsers = async (
 	if (params.search) qp.append('search', String(params.search))
 	if (params.sortOrder) qp.append('sortOrder', String(params.sortOrder))
 
-	const response = await apiClient.getWithHeaders<any>(`/User?${qp.toString()}`)
+	const response = await apiClient.getWithHeaders<any>(`/admin/users?${qp.toString()}`)
 	const raw = response.data
 	const body = raw && typeof raw === 'object' && 'value' in raw ? raw.value : raw
 
@@ -62,33 +63,54 @@ export const getUsers = async (
 	}
 }
 
-// GET /User/{id}
+// GET /admin/users/{id}
 export const getUserById = async (id: number): Promise<UserDto> => {
-	const response = await apiClient.get<ApiResponse<UserDto> | UserDto>(`/User/${id}`)
+	const response = await apiClient.get<ApiResponse<UserDto> | UserDto>(`/admin/users/${id}`)
 	if (response && typeof response === 'object' && 'id' in response && 'email' in response) {
 		return response as UserDto
 	}
 	return (response as ApiResponse<UserDto>).value as UserDto
 }
 
-// POST /User
+// POST /admin/users
 export const createUser = async (command: CreateNewUserRequest): Promise<number> => {
-	const response = await apiClient.post<ApiResponse<number> | number>('/User', command)
+	const response = await apiClient.post<ApiResponse<number> | number>('/admin/users', command)
 	if (typeof response === 'number') return response
 	return (response as ApiResponse<number>).value || 0
 }
 
-// PUT /User/{id}
+// PUT /admin/users/{id}
 export const updateUser = async (id: number, command: UpdateUserRequest): Promise<boolean> => {
-	const response = await apiClient.put<ApiResponse<boolean> | boolean>(`/User/${id}`, command)
+	const payload = { ...command, userId: id }
+	const response = await apiClient.put<ApiResponse<boolean> | boolean>(`/admin/users/${id}`, payload)
 	if (typeof response === 'boolean') return response
 	return (response as ApiResponse<boolean>).value ?? false
 }
 
-// DELETE /User/{id}?hardDelete=true
+// DELETE /admin/users/{id}?hardDelete=bool
 export const deleteUser = async (id: number, hardDelete: boolean = false): Promise<boolean> => {
 	const qs = hardDelete ? '?hardDelete=true' : ''
-	const response = await apiClient.delete<ApiResponse<boolean> | boolean>(`/User/${id}${qs}`)
+	const response = await apiClient.delete<ApiResponse<boolean> | boolean>(`/admin/users/${id}${qs}`)
+	if (typeof response === 'boolean') return response
+	return (response as ApiResponse<boolean>).value ?? false
+}
+
+// PATCH /admin/users/{id}/restore
+export const restoreUser = async (id: number): Promise<boolean> => {
+	const response = await apiClient.patch<ApiResponse<boolean> | boolean>(`/admin/users/${id}/restore`)
+	if (typeof response === 'boolean') return response
+	return (response as ApiResponse<boolean>).value ?? false
+}
+
+// PATCH /admin/users/{id}/change-password
+export const changePasswordAdmin = async (
+	id: number,
+	command: ChangePasswordAdminRequest
+): Promise<boolean> => {
+	const response = await apiClient.patch<ApiResponse<boolean> | boolean>(
+		`/admin/users/${id}/change-password`,
+		command
+	)
 	if (typeof response === 'boolean') return response
 	return (response as ApiResponse<boolean>).value ?? false
 }
@@ -99,4 +121,6 @@ export default {
 	createUser,
 	updateUser,
 	deleteUser,
+	restoreUser,
+	changePasswordAdmin,
 }

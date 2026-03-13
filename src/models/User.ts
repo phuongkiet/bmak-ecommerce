@@ -33,11 +33,16 @@ export interface DeleteUserRequest {
 }
 
 export interface UpdateUserRequest {
-  id: number;
+  userId: number;
   fullName: string;
   phoneNumber: string;
   roles: string[];
   isActive: boolean;
+}
+
+export interface ChangePasswordAdminRequest {
+  newPassword: string;
+  confirmNewPassword: string;
 }
 
 export interface UserSpecParams {

@@ -153,7 +153,7 @@ const calculateShippingFromRules = (
 }
 
 const Checkout = observer(() => {
-  const { cartStore, orderStore, provinceStore, wardStore, voucherStore, businessRuleStore, addressStore, authStore } = useStore()
+  const { cartStore, orderStore, provinceStore, wardStore, voucherStore, addressStore, authStore } = useStore()
 
   // Form state
   const [formData, setFormData] = useState<CreateOrderData>({
@@ -229,13 +229,26 @@ const Checkout = observer(() => {
 
     const loadShippingFeeFromBusinessRule = async () => {
       try {
-        await businessRuleStore.fetchBusinessRules({
-          pageIndex: 1,
-          pageSize: 100,
-          isActive: true,
-        })
+        // /BusinessRules is admin-only; 401/403 must be silently ignored so
+        // the Checkout page still works for regular customers (fee defaults to 0).
+        let pagedRules: import('@/models/BusinessRule').PagedList<BusinessRuleDto>
+        try {
+          pagedRules = await businessRuleApi.getBusinessRules({
+            pageIndex: 1,
+            pageSize: 100,
+            isActive: true,
+          })
+        } catch (apiErr: any) {
+          // 403 / 401 → endpoint requires admin – silently skip
+          if (apiErr?.status === 403 || apiErr?.status === 401) {
+            setShippingRules([])
+            setShippingFee(0)
+            return
+          }
+          throw apiErr
+        }
 
-        const rules = businessRuleStore.businessRules?.items || []
+        const rules = pagedRules?.items || []
         const activeRules = [...rules]
           .filter(rule => rule.isActive)
           .sort((a, b) => a.priority - b.priority)
@@ -421,7 +434,14 @@ const Checkout = observer(() => {
       }
     }
 
-    const result = await orderStore.createOrder(formData)
+    // Mirrors CartController.GetEffectiveCartId on the backend:
+    // logged-in users have their cart stored under "cart:user:{id}"
+    const effectiveCartId =
+      authStore.isAuthenticated && authStore.user?.id
+        ? `cart:user:${authStore.user.id}`
+        : cartStore.cartId
+
+    const result = await orderStore.createOrder({ ...formData, cartId: effectiveCartId })
 
     if (result.success) {      
       // Clear cart and navigate

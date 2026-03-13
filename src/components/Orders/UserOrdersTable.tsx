@@ -8,23 +8,16 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import type { OrderSummaryDto } from "@/models/Order";
-import { formatPrice } from "@/utils";
+import { formatPrice, getOrderStatusLabel } from "@/utils";
 import { useStore } from "@/store";
 
 const statusColors: Record<OrderSummaryDto["status"], string> = {
   Pending: "bg-yellow-100 text-yellow-800",
-  Processing: "bg-blue-100 text-blue-800",
-  Shipped: "bg-purple-100 text-purple-800",
-  Delivered: "bg-green-100 text-green-800",
+  Confirmed: "bg-blue-100 text-blue-800",
+  Shipping: "bg-purple-100 text-purple-800",
+  Completed: "bg-green-100 text-green-800",
   Cancelled: "bg-red-100 text-red-800",
-};
-
-const statusLabels: Record<OrderSummaryDto["status"], string> = {
-  Pending: "Chờ xử lý",
-  Processing: "Đang xử lý",
-  Shipped: "Đang giao",
-  Delivered: "Đã nhận",
-  Cancelled: "Đã hủy",
+  Returned: "bg-gray-200 text-gray-800",
 };
 
 const UserOrdersTable = observer(() => {
@@ -43,7 +36,6 @@ const UserOrdersTable = observer(() => {
       pageNumber: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
       sort: "orderDateDesc",
-      userId: currentUserId,
     });
   }, [orderStore, authStore.user?.id, pagination.pageIndex, pagination.pageSize]);
 
@@ -113,7 +105,7 @@ const UserOrdersTable = observer(() => {
           <span
             className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[row.original.status]}`}
           >
-            {statusLabels[row.original.status]}
+            {getOrderStatusLabel(row.original.status)}
           </span>
         ),
       },
@@ -280,8 +272,7 @@ const UserOrdersTable = observer(() => {
                     "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {statusLabels[orderStore.selectedOrder.status as OrderSummaryDto["status"]] ||
-                    orderStore.selectedOrder.status}
+                  {getOrderStatusLabel(orderStore.selectedOrder.status as OrderSummaryDto["status"])}
                 </span>
               </div>
 

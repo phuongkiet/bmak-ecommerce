@@ -8,12 +8,16 @@ import {
   type ColumnDef,
   PaginationState,
 } from '@tanstack/react-table'
-import type { OrderSummaryDto } from '@/models/Order'
-import { formatPrice } from '@/utils'
+import type { OrderSummaryDto, OrderStatus } from '@/models/Order'
+import { formatPrice, getOrderStatusLabel } from '@/utils'
 import { useStore } from '@/store'
 
 const AdminOrders = () => {
   const { orderStore } = useStore()
+  const [loadingDetailCode, setLoadingDetailCode] = useState<string | null>(null)
+  const [updatingStatusCode, setUpdatingStatusCode] = useState<string | null>(null)
+
+  const statusOptions: OrderStatus[] = ['Pending', 'Confirmed', 'Shipping', 'Completed', 'Cancelled', 'Returned']
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0, // TanStack dùng 0-index, BE của bạn dùng 1-index (lưu ý chỗ này)
@@ -28,6 +32,27 @@ const AdminOrders = () => {
       sort: 'orderDateDesc',
     })
   }, [orderStore, pagination.pageIndex, pagination.pageSize])
+
+  const handleViewDetail = async (orderCode: string) => {
+    setLoadingDetailCode(orderCode)
+    try {
+      await orderStore.fetchAdminOrderByCode(orderCode)
+    } finally {
+      setLoadingDetailCode(null)
+    }
+  }
+
+  const handleUpdateStatus = async (orderCode: string, status: OrderStatus) => {
+    setUpdatingStatusCode(orderCode)
+    try {
+      const success = await orderStore.updateAdminOrderStatus(orderCode, status)
+      if (success && orderStore.selectedOrder?.orderCode === orderCode) {
+        orderStore.selectedOrder.status = status
+      }
+    } finally {
+      setUpdatingStatusCode(null)
+    }
+  }
 
   const columns = useMemo<ColumnDef<OrderSummaryDto>[]>(
     () => [
@@ -63,23 +88,17 @@ const AdminOrders = () => {
           const status = row.original.status
           const statusColors: Record<OrderSummaryDto['status'], string> = {
             Pending: 'bg-yellow-100 text-yellow-800',
-            Processing: 'bg-blue-100 text-blue-800',
-            Shipped: 'bg-purple-100 text-purple-800',
-            Delivered: 'bg-green-100 text-green-800',
+            Confirmed: 'bg-blue-100 text-blue-800',
+            Shipping: 'bg-purple-100 text-purple-800',
+            Completed: 'bg-green-100 text-green-800',
             Cancelled: 'bg-red-100 text-red-800',
-          }
-          const statusLabels: Record<OrderSummaryDto['status'], string> = {
-            Pending: 'Chờ xử lý',
-            Processing: 'Đang xử lý',
-            Shipped: 'Đã giao hàng',
-            Delivered: 'Đã nhận',
-            Cancelled: 'Đã hủy',
+            Returned: 'bg-gray-200 text-gray-800',
           }
           return (
             <span
               className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[status]}`}
             >
-              {statusLabels[status]}
+              {getOrderStatusLabel(status)}
             </span>
           )
         },
@@ -96,14 +115,43 @@ const AdminOrders = () => {
       {
         id: 'actions',
         header: 'Thao tác',
-        cell: () => (
-          <button className="text-primary-600 hover:text-primary-900 transition-colors">
-            <Eye size={18} />
-          </button>
-        ),
+        cell: ({ row }) => {
+          const orderCode = row.original.orderCode || String(row.original.id)
+          const currentStatus = row.original.status as OrderStatus
+
+          return (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => void handleViewDetail(orderCode)}
+                disabled={loadingDetailCode === orderCode}
+                className="text-primary-600 hover:text-primary-900 transition-colors disabled:opacity-50"
+                title="Xem chi tiết"
+              >
+                <Eye size={18} />
+              </button>
+
+              <select
+                value={currentStatus}
+                className="border border-gray-300 rounded-md px-2 py-1 text-xs"
+                onChange={(e) => {
+                  const nextStatus = e.target.value as OrderStatus
+                  if (nextStatus === currentStatus) return
+                  void handleUpdateStatus(orderCode, nextStatus)
+                }}
+                disabled={updatingStatusCode === orderCode}
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {getOrderStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        },
       },
     ],
-    []
+    [loadingDetailCode, updatingStatusCode]
   )
 
   const table = useReactTable({
@@ -245,6 +293,38 @@ const AdminOrders = () => {
           </div>
         )}
       </div>
+
+      {orderStore.selectedOrder && (
+        <div className="mt-6 bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Chi tiết đơn: {orderStore.selectedOrder.orderCode}</h2>
+            <button
+              className="text-sm text-gray-600 hover:text-gray-900"
+              onClick={() => orderStore.clearSelectedOrder()}
+            >
+              Đóng
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500">Khách hàng</p>
+              <p className="font-medium">{orderStore.selectedOrder.customerName}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">SĐT</p>
+              <p className="font-medium">{orderStore.selectedOrder.customerPhone}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Tổng tiền</p>
+              <p className="font-medium">{formatPrice(orderStore.selectedOrder.totalAmount)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Trạng thái</p>
+              <p className="font-medium">{orderStore.selectedOrder.status}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

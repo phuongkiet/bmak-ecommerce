@@ -14,13 +14,82 @@ import {
 } from '@tanstack/react-table'
 import type { CategoryDto } from '@/models/Category'
 
+type CategoryFormState = {
+  name: string
+  slug: string
+  description: string
+  parentId: string
+  isActive: boolean
+}
+
 const AdminCategories = observer(() => {
   const { categoryStore } = useStore()
   const [sorting, setSorting] = useState<SortingState>([])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<CategoryDto | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [formState, setFormState] = useState<CategoryFormState>({
+    name: '',
+    slug: '',
+    description: '',
+    parentId: '',
+    isActive: true,
+  })
 
   useEffect(() => {
-    categoryStore.fetchCategories()
-  }, [])
+    void categoryStore.fetchAdminCategories()
+  }, [categoryStore])
+
+  const openCreateModal = () => {
+    setEditingCategory(null)
+    setFormState({ name: '', slug: '', description: '', parentId: '', isActive: true })
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (category: CategoryDto) => {
+    setEditingCategory(category)
+    setFormState({
+      name: category.name,
+      slug: category.slug,
+      description: category.description || '',
+      parentId: category.parentId ? String(category.parentId) : '',
+      isActive: category.isActive ?? true,
+    })
+    setIsModalOpen(true)
+  }
+
+  const handleSubmit = async () => {
+    if (!formState.name.trim() || !formState.slug.trim()) return
+
+    const payload = {
+      name: formState.name.trim(),
+      slug: formState.slug.trim(),
+      description: formState.description.trim() || undefined,
+      parentId: formState.parentId ? Number(formState.parentId) : undefined,
+      isActive: formState.isActive,
+    }
+
+    if (editingCategory) {
+      const ok = await categoryStore.updateAdminCategory(editingCategory.id, {
+        ...payload,
+        id: editingCategory.id,
+      })
+      if (ok) setIsModalOpen(false)
+      return
+    }
+
+    const ok = await categoryStore.createAdminCategory(payload)
+    if (ok) setIsModalOpen(false)
+  }
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      await categoryStore.deleteAdminCategory(id)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const columns = useMemo<ColumnDef<CategoryDto>[]>(
     () => [
@@ -62,19 +131,26 @@ const AdminCategories = observer(() => {
       {
         id: 'actions',
         header: 'Thao tác',
-        cell: () => (
+        cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <button className="text-primary-600 hover:text-primary-900 transition-colors">
+            <button
+              className="text-primary-600 hover:text-primary-900 transition-colors"
+              onClick={() => openEditModal(row.original)}
+            >
               <Edit size={18} />
             </button>
-            <button className="text-red-600 hover:text-red-900 transition-colors">
+            <button
+              className="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50"
+              onClick={() => void handleDelete(row.original.id)}
+              disabled={deletingId === row.original.id}
+            >
               <Trash2 size={18} />
             </button>
           </div>
         ),
       },
     ],
-    []
+    [deletingId]
   )
 
   const table = useReactTable({
@@ -94,11 +170,93 @@ const AdminCategories = observer(() => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Quản lý danh mục</h1>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2">
+        <button
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+          onClick={openCreateModal}
+        >
           <Plus size={20} />
           Thêm danh mục
         </button>
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-xl font-semibold">
+              {editingCategory ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}
+            </h2>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Tên danh mục</label>
+                <input
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  value={formState.name}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Slug</label>
+                <input
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  value={formState.slug}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, slug: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Mô tả</label>
+                <textarea
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  rows={3}
+                  value={formState.description}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Danh mục cha</label>
+                <select
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  value={formState.parentId}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, parentId: e.target.value }))}
+                >
+                  <option value="">Không có</option>
+                  {categoryStore.categories
+                    .filter((c) => !editingCategory || c.id !== editingCategory.id)
+                    .map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formState.isActive}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, isActive: e.target.checked }))}
+                />
+                Hiển thị danh mục
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Hủy
+              </button>
+              <button
+                className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-60"
+                onClick={() => void handleSubmit()}
+                disabled={categoryStore.isLoading || !formState.name.trim() || !formState.slug.trim()}
+              >
+                {editingCategory ? 'Lưu thay đổi' : 'Tạo danh mục'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {categoryStore.isLoading ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">

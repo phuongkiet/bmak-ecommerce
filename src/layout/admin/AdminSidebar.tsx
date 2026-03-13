@@ -5,7 +5,6 @@ import {
   Package,
   ShoppingCart,
   Users,
-  BarChart3,
   Settings,
   FileText,
   FileEdit,
@@ -25,7 +24,6 @@ const AdminSidebar = observer(() => {
     { path: "/admin/business-rules", icon: ShieldCheck, label: "Quy tắc phí giao hàng" },
     { path: "/admin/customers", icon: Users, label: "Quản lý người dùng" },
     { path: "/admin/orders", icon: ShoppingCart, label: "Đơn hàng" },
-    { path: "/admin/reports", icon: BarChart3, label: "Báo cáo" },
     { path: "/admin/pages", icon: FileEdit, label: "Trang" },
     { path: "/admin/settings", icon: Settings, label: "Cài đặt" },
   ];

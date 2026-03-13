@@ -119,6 +119,24 @@ class OrderStore {
     }
   }
 
+  async fetchAdminOrderByCode(orderCode: string): Promise<void> {
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const data = await orderApi.getAdminOrderByCode(orderCode)
+      runInAction(() => {
+        this.selectedOrder = data
+        this.isLoading = false
+      })
+    } catch (error) {
+      runInAction(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to fetch order'
+        this.isLoading = false
+      })
+    }
+  }
+
   async cancelOrder(id: number): Promise<void> {
     this.isLoading = true
     this.error = null
@@ -150,6 +168,38 @@ class OrderStore {
         this.isLoading = false
       })
       throw error
+    }
+  }
+
+  async updateAdminOrderStatus(orderCode: string, status: OrderStatus): Promise<boolean> {
+    this.isLoading = true
+    this.error = null
+
+    try {
+      const success = await orderApi.updateAdminOrderStatus(orderCode, status)
+
+      runInAction(() => {
+        if (success && this.orders?.items) {
+          const index = this.orders.items.findIndex(o => o.orderCode === orderCode)
+          if (index !== -1) {
+            this.orders.items[index].status = status
+          }
+        }
+
+        if (success && this.selectedOrder?.orderCode === orderCode) {
+          this.selectedOrder.status = status
+        }
+
+        this.isLoading = false
+      })
+
+      return success
+    } catch (error) {
+      runInAction(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to update order status'
+        this.isLoading = false
+      })
+      return false
     }
   }
 

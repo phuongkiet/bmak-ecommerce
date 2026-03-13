@@ -4,7 +4,11 @@ import { ApiResponse, apiClient } from './apiClient'
 type CartResult = ApiResponse<ShoppingCart> | ShoppingCart
 
 const normalizeCart = (response: CartResult): ShoppingCart => {
-  return 'value' in response ? response.value! : {} as ShoppingCart
+  if (response && typeof response === 'object' && 'value' in response) {
+    return (response as ApiResponse<ShoppingCart>).value || ({} as ShoppingCart)
+  }
+
+  return response as ShoppingCart
 }
 
 export interface AddToCartPayload {

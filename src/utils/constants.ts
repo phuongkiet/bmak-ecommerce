@@ -42,10 +42,11 @@ export const MIN_CART_QUANTITY = 1
 // Order Status
 export const ORDER_STATUS = {
   PENDING: 'pending',
-  PROCESSING: 'processing',
-  SHIPPED: 'shipped',
-  DELIVERED: 'delivered',
+  CONFIRMED: 'confirmed',
+  SHIPPING: 'shipping',
+  COMPLETED: 'completed',
   CANCELLED: 'cancelled',
+  RETURNED: 'returned',
 } as const
 
 // Payment Status

@@ -22,12 +22,12 @@ import AdminProducts from './pages/admin/AdminProducts'
 import AddProduct from './pages/admin/CreatePage/Product/AddProduct'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminCustomers from './pages/admin/AdminUsers'
+import AdminUserDetail from './pages/admin/AdminUserDetail'
 import AdminCategories from './pages/admin/AdminCategories'
 import AdminVouchers from './pages/admin/AdminVouchers'
 import AdminVoucherForm from './pages/admin/AdminVoucherForm'
 import AdminBusinessRules from './pages/admin/AdminBusinessRules'
 import AdminBusinessRuleForm from './pages/admin/AdminBusinessRuleForm'
-import AdminReports from './pages/admin/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminPages from './pages/admin/AdminPages'
 import AdminDetailPage from './pages/admin/DetailPage/AdminDetailPage'
@@ -48,7 +48,7 @@ function App() {
   return (
     <StoreProvider>
       <NotificationContainer />
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
 
           <Route path="/admin/sign-in" element={<AdminSignIn />} />
@@ -96,6 +96,8 @@ function App() {
                     <Route path="news/:id" element={<AdminDetailNewsPost />} />
                     <Route path="orders" element={<AdminOrders />} />
                     <Route path="customers" element={<AdminCustomers />} />
+                    <Route path="customers/new" element={<AdminUserDetail />} />
+                    <Route path="customers/:id" element={<AdminUserDetail />} />
                     <Route path="categories" element={<AdminCategories />} />
                     <Route path="vouchers" element={<AdminVouchers />} />
                     <Route path="vouchers/add" element={<AdminVoucherForm />} />
@@ -103,7 +105,6 @@ function App() {
                     <Route path="business-rules" element={<AdminBusinessRules />} />
                     <Route path="business-rules/add" element={<AdminBusinessRuleForm />} />
                     <Route path="business-rules/:id" element={<AdminBusinessRuleForm />} />
-                    <Route path="reports" element={<AdminReports />} />
                     <Route path="media" element={<AdminMedias />} />
                     <Route path="pages" element={<AdminPages />} />
                     <Route path="pages/:slug" element={<AdminDetailPage />} />

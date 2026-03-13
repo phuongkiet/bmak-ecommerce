@@ -80,7 +80,7 @@ const CompleteCheckout = () => {
               Mua thêm
             </button>
             <button
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate('/profile?tab=orders')}
               className="px-3 py-2 border-2 border-primary-600 text-primary-600 rounded font-semibold hover:bg-primary-50 transition-colors text-sm"
             >
               Xem đơn

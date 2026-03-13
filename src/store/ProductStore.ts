@@ -57,7 +57,7 @@ class ProductStore {
       const data = await productApi.getProducts()
       console.log("Fetched products:", data)
       runInAction(() => {
-        this.products = data
+        this.products = Array.isArray(data) ? data : []
         this.isLoading = false
       })
     } catch (error) {

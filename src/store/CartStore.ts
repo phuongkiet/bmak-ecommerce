@@ -61,6 +61,24 @@ class CartStore {
     this.cart = cart
   }
 
+  private logCartError(action: string, error: any, context?: Record<string, unknown>): void {
+    const status = error?.status
+    const message = error?.message || 'Unknown cart error'
+    const details = error?.errors
+
+    console.group(`[CartStore] ${action} failed`)
+    console.error('status:', status)
+    console.error('message:', message)
+    if (details) {
+      console.error('validation/errors:', details)
+    }
+    if (context) {
+      console.error('context:', context)
+    }
+    console.error('raw error:', error)
+    console.groupEnd()
+  }
+
   async fetchCart(): Promise<void> {
     this.isLoading = true
     try {
@@ -69,6 +87,7 @@ class CartStore {
         this.setCart(data)
       })
     } catch (error: any) {
+      this.logCartError('fetchCart', error, { cartId: this.cartId })
       const message = error?.message || 'Không thể tải giỏ hàng'
       this.rootStore.commonStore.showError(message)
     } finally {
@@ -91,6 +110,7 @@ class CartStore {
       })
       this.rootStore.commonStore.showSuccess('Đã thêm vào giỏ hàng')
     } catch (error: any) {
+      this.logCartError('addItem', error, { cartId: this.cartId, productId, quantity })
       const message = error?.message || 'Thêm vào giỏ hàng thất bại'
       this.rootStore.commonStore.showError(message)
     } finally {
@@ -109,6 +129,7 @@ class CartStore {
       })
       this.rootStore.commonStore.showSuccess('Đã xóa giỏ hàng')
     } catch (error: any) {
+      this.logCartError('clearShoppingCart', error, { cartId: this.cartId })
       const message = error?.message || 'Xóa giỏ hàng thất bại'
       this.rootStore.commonStore.showError(message)
     } finally {
@@ -127,6 +148,7 @@ class CartStore {
       })
       this.rootStore.commonStore.showSuccess('Cập nhật giỏ hàng thành công')
     } catch (error: any) {
+      this.logCartError('updateShoppingCartItem', error, { cartId: this.cartId, productId, quantity })
       const message = error?.message || 'Cập nhật giỏ hàng thất bại'
       this.rootStore.commonStore.showError(message)
     } finally {
@@ -145,6 +167,7 @@ class CartStore {
       })
       this.rootStore.commonStore.showSuccess('Đã xóa sản phẩm khỏi giỏ hàng')
     } catch (error: any) {
+      this.logCartError('deleteShoppingCartItem', error, { cartId: this.cartId, productId })
       const message = error?.message || 'Xóa sản phẩm khỏi giỏ hàng thất bại' 
       this.rootStore.commonStore.showError(message)
     } finally {
