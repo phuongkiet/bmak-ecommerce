@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/store'
 import { formatPrice } from '@/utils'
 import { Trash2, Minus, Plus } from 'lucide-react'
+import { toProxiedImageUrl } from '@/utils/imageProxy'
 
 const Cart = observer(() => {
   const { cartStore } = useStore()
@@ -59,7 +60,7 @@ const Cart = observer(() => {
             {items.map((item) => (
               <div key={`${item.productId}-${item.productSlug}`} className="flex gap-4 bg-white rounded-lg shadow p-4">
                 <img
-                  src={item.pictureUrl || '/images/default/no-image.png'}
+                  src={toProxiedImageUrl(item.pictureUrl) || '/images/default/no-image.png'}
                   alt={item.productName}
                   className="w-24 h-24 object-contain bg-gray-50 rounded"
                 />

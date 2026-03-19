@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react'
 import { useStore } from '@/store'
 import { formatPrice } from '@/utils'
+import { toProxiedImageUrl } from '@/utils/imageProxy'
 
 // Interface Local dùng cho hiển thị (UI Model)
 interface CarouselItem {
@@ -128,8 +129,8 @@ const ProductCarousel = ({
           id: p.id,
           name: p.name,
           image:
-            (p as any).thumbnail ||
-            (p as any).imageUrl ||
+            toProxiedImageUrl((p as any).thumbnail) ||
+            toProxiedImageUrl((p as any).imageUrl) ||
             (p as any).image ||
             '/placeholder.png',
           // Ưu tiên price; fallback sang salePrice/basePrice

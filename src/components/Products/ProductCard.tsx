@@ -4,6 +4,7 @@ import { observer } from "mobx-react-lite";
 import { useStore } from "@/store";
 import { useEffect, useState } from "react";
 import QuickViewModal from "./QuickViewModal";
+import { toProxiedImageUrl } from "@/utils/imageProxy";
 
 interface ProductCardProps {
   products: {
@@ -43,7 +44,7 @@ const ProductCard = observer(({ products }: ProductCardProps) => {
           <div key={index}>
             <div className="w-full h-48 rounded-lg overflow-hidden hover:scale-105 transition-transform cursor-pointer">
               <img
-                src={product.image}
+                src={toProxiedImageUrl(product.image) || "/images/default/no-image.png"}
                 alt={product.name}
                 className="w-full h-48 object-contain rounded-lg"
                 onClick={() => {

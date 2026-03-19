@@ -9,6 +9,7 @@ import {
   getComparedProductIds,
   removeProductFromCompare,
 } from "@/utils/compareStorage";
+import { toProxiedImageUrl } from "@/utils/imageProxy";
 
 const ProductComparation = () => {
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -143,7 +144,7 @@ const ProductComparation = () => {
                   <X size={14} />
                 </button>
                 <img
-                  src={product.thumbnail || product.images?.[0]?.url || "/images/default/no-image.png"}
+                  src={toProxiedImageUrl(product.thumbnail) || toProxiedImageUrl(product.images?.[0]?.url) || "/images/default/no-image.png"}
                   alt={product.name}
                   className="w-full h-48 object-contain bg-gray-50 mb-3"
                 />

@@ -7,11 +7,16 @@ import HeroCarousel from '@/components/HeroCarousel'
 import PageSectionsRenderer from '@/components/PageSectionsRenderer'
 
 const Home = observer(() => {
-  const { pageStore } = useStore()
+  const { pageStore, adminSettingStore } = useStore()
+  const siteName = adminSettingStore.setting?.siteName?.trim() || 'GAVICO'
 
   useEffect(() => {
     pageStore.getPageBySlugFromApi('trang-chu')
   }, [pageStore])
+
+  useEffect(() => {
+    document.title = `Trang chu - ${siteName}`
+  }, [siteName])
 
   const homePage = pageStore.selectedPage?.slug === 'trang-chu' ? pageStore.selectedPage : undefined
 

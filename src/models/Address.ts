@@ -9,6 +9,8 @@ export interface AddressDto {
   receiverName: string;
   phone: string;
   street: string;
+  lat?: string;
+  lng?: string;
   provinceId: string;
   provinceName: string;
   wardId: string;
@@ -22,6 +24,8 @@ export interface CreateAddressRequest {
   receiverName: string;
   phone: string;
   street: string;
+  lat: string;
+  lng: string;
   provinceId: string;
   wardId: string;
   type: AddressType;
@@ -32,6 +36,8 @@ export interface UpdateAddressRequest {
   receiverName: string;
   phone: string;
   street: string;
+  lat: string;
+  lng: string;
   provinceId: string;
   wardId: string;
   type: AddressType;

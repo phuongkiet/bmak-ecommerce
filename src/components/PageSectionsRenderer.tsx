@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import HeroCarousel from '@/components/HeroCarousel'
 import ProductCarousel from '@/components/ProductCarousel'
 import type { PageSectionDto } from '@/models/Page'
+import { proxyImageSourcesInHtml, toProxiedImageUrl } from '@/utils/imageProxy'
 
 interface PageSectionsRendererProps {
   sections?: PageSectionDto[]
@@ -90,7 +91,7 @@ const PageSectionsRenderer = ({ sections, fallback }: PageSectionsRendererProps)
           return (
             <section key={section.id} className="py-16 bg-white">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-                <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
+                <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: proxyImageSourcesInHtml(section.content) }} />
               </div>
             </section>
           )
@@ -102,7 +103,7 @@ const PageSectionsRenderer = ({ sections, fallback }: PageSectionsRendererProps)
             <section key={section.id} className="py-16 bg-white">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
                 <img
-                  src={section.imageUrl}
+                  src={toProxiedImageUrl(section.imageUrl)}
                   alt="Section"
                   className="w-full rounded-lg"
                 />
@@ -124,19 +125,19 @@ const PageSectionsRenderer = ({ sections, fallback }: PageSectionsRendererProps)
                   {section.imagePosition === 'left' && section.imageUrl && (
                     <div>
                       <img
-                        src={section.imageUrl}
+                        src={toProxiedImageUrl(section.imageUrl)}
                         alt="Section"
                         className="w-full rounded-lg"
                       />
                     </div>
                   )}
                   {section.content && (
-                    <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
+                    <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: proxyImageSourcesInHtml(section.content) }} />
                   )}
                   {section.imagePosition === 'right' && section.imageUrl && (
                     <div>
                       <img
-                        src={section.imageUrl}
+                        src={toProxiedImageUrl(section.imageUrl)}
                         alt="Section"
                         className="w-full rounded-lg"
                       />

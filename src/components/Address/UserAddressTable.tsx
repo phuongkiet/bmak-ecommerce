@@ -27,6 +27,8 @@ const UserAddressTable = observer(() => {
     receiverName: "",
     phone: "",
     street: "",
+    lat: "",
+    lng: "",
     provinceId: "",
     wardId: "",
     type: AddressType.Home,
@@ -77,6 +79,8 @@ const UserAddressTable = observer(() => {
       receiverName: userDefaultReceiver,
       phone: userDefaultPhone,
       street: "",
+      lat: "",
+      lng: "",
       provinceId: "",
       wardId: "",
       type: AddressType.Home,
@@ -91,6 +95,8 @@ const UserAddressTable = observer(() => {
       receiverName: address.receiverName,
       phone: address.phone,
       street: address.street,
+      lat: address.lat || "",
+      lng: address.lng || "",
       provinceId: address.provinceId,
       wardId: address.wardId,
       type: address.type,
@@ -275,12 +281,20 @@ const UserAddressTable = observer(() => {
                 ))}
               </select>
 
-              <input
-                value={formData.street}
-                onChange={(event) => setFormData((prev) => ({ ...prev, street: event.target.value }))}
-                placeholder="Số nhà, tên đường"
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
-              />
+              <div className="md:col-span-2">
+                <input
+                  type="text"
+                  value={formData.street}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      street: event.target.value,
+                    }))
+                  }
+                  placeholder="Nhập số nhà/tên đường"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                />
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">

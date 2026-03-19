@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
-import { CreateOrderData, OrderAddressDto } from '@/models/Order'
+import { CreateOrderData } from '@/models/Order'
 import { formatPrice } from '@/utils'
 import ProvinceSelectComponent from '@/components/Address/ProvinceSelectComponent'
 import WardSelectComponent from '@/components/Address/WardSelectComponent'
 import * as businessRuleApi from '@/agent/api/businessRuleApi'
 import { BusinessRuleDto } from '@/models/BusinessRule'
-import type { AddressDto } from '@/models/Address'
+import { AddressType, type AddressDto } from '@/models/Address'
 
 const SHIPPING_FEE_ACTION_TYPE = 1
 
@@ -153,7 +153,8 @@ const calculateShippingFromRules = (
 }
 
 const Checkout = observer(() => {
-  const { cartStore, orderStore, provinceStore, wardStore, voucherStore, addressStore, authStore } = useStore()
+  const { cartStore, orderStore, provinceStore, wardStore, voucherStore, addressStore, authStore, adminSettingStore } = useStore()
+  const siteName = adminSettingStore.setting?.siteName?.trim() || 'GAVICO'
 
   // Form state
   const [formData, setFormData] = useState<CreateOrderData>({
@@ -221,7 +222,7 @@ const Checkout = observer(() => {
   }
 
   useEffect(() => {
-    document.title = 'Thanh toán - GAVICO'
+    document.title = `Thanh toan - ${siteName}`
     provinceStore.fetchProvinces()
     if (authStore.isAuthenticated) {
       void addressStore.fetchMyAddresses()
@@ -277,7 +278,7 @@ const Checkout = observer(() => {
     }
 
     void loadShippingFeeFromBusinessRule()
-  }, [addressStore, authStore.isAuthenticated])
+  }, [addressStore, authStore.isAuthenticated, siteName])
 
   useEffect(() => {
     if (!authStore.user?.email) return
@@ -337,23 +338,6 @@ const Checkout = observer(() => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
-    }))
-  }
-
-  const handleAddressChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    addressField: string,
-    addressType: 'billing' | 'shipping' = 'billing'
-  ) => {
-    const value = e.target.value
-    const addressKey = addressType === 'billing' ? 'billingAddress' : 'shippingAddress'
-
-    setFormData(prev => ({
-      ...prev,
-      [addressKey]: {
-        ...(prev[addressKey] as OrderAddressDto),
-        [addressField]: value,
-      },
     }))
   }
 
@@ -441,7 +425,29 @@ const Checkout = observer(() => {
         ? `cart:user:${authStore.user.id}`
         : cartStore.cartId
 
-    const result = await orderStore.createOrder({ ...formData, cartId: effectiveCartId })
+    // If user has no saved address yet, persist current billing address as default.
+    if (authStore.isAuthenticated && addressStore.addresses.length === 0) {
+      const createdAddressId = await addressStore.createAddress({
+        receiverName: formData.buyerName,
+        phone: formData.buyerPhone,
+        street: formData.billingAddress.specificAddress,
+        lat: '',
+        lng: '',
+        provinceId: billingProvinceId,
+        wardId: billingWardId,
+        type: AddressType.Home,
+      })
+
+      if (!createdAddressId) {
+        alert('Không thể lưu địa chỉ mặc định cho tài khoản. Đơn hàng vẫn sẽ được tạo.')
+      }
+    }
+
+    const result = await orderStore.createOrder({
+      ...formData,
+      cartId: effectiveCartId,
+      paymentMethod: 'COD',
+    })
 
     if (result.success) {      
       // Clear cart and navigate
@@ -563,8 +569,17 @@ const Checkout = observer(() => {
                   <input
                     type="text"
                     value={formData.billingAddress.specificAddress}
-                    onChange={e => handleAddressChange(e, 'specificAddress', 'billing')}
-                    placeholder="123 Đường Lê Lợi"
+                    onChange={e => {
+                      const specificAddress = e.target.value
+                      setFormData(prev => ({
+                        ...prev,
+                        billingAddress: {
+                          ...prev.billingAddress,
+                          specificAddress,
+                        },
+                      }))
+                    }}
+                    placeholder="123 Đường Lê Lợi, Phường A"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     required
                   />
@@ -679,8 +694,17 @@ const Checkout = observer(() => {
                     <input
                       type="text"
                       value={formData.shippingAddress?.specificAddress || ''}
-                      onChange={e => handleAddressChange(e, 'specificAddress', 'shipping')}
-                      placeholder="456 Đường Cách Mạng Tháng 8"
+                      onChange={e => {
+                        const specificAddress = e.target.value
+                        setFormData(prev => ({
+                          ...prev,
+                          shippingAddress: {
+                            ...(prev.shippingAddress || { province: '', ward: '', specificAddress: '' }),
+                            specificAddress,
+                          },
+                        }))
+                      }}
+                      placeholder="456 Đường Cách Mạng Tháng 8, Phường B"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       required
                     />
@@ -694,23 +718,19 @@ const Checkout = observer(() => {
               <div>
                 <label className="block text-sm font-medium mb-2">Phương thức thanh toán</label>
                 <div className="space-y-2">
-                  {['COD', 'Banking', 'VNPAY'].map(method => (
-                    <label key={method} className="flex items-center">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value={method}
-                        checked={formData.paymentMethod === method}
-                        onChange={e => handleInputChange(e, 'paymentMethod')}
-                        className="w-4 h-4 text-primary-600"
-                      />
-                      <span className="ml-3 text-sm">
-                        {method === 'COD' && 'Thanh toán khi nhận hàng (COD)'}
-                        {method === 'Banking' && 'Chuyển khoản ngân hàng'}
-                        {method === 'VNPAY' && 'Thanh toán qua VNPay'}
-                      </span>
-                    </label>
-                  ))}
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="COD"
+                      checked
+                      readOnly
+                      className="w-4 h-4 text-primary-600"
+                    />
+                    <span className="ml-3 text-sm">
+                      Thanh toán khi nhận hàng (COD)
+                    </span>
+                  </label>
                 </div>
               </div>
 

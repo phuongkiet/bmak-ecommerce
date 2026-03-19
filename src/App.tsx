@@ -43,6 +43,7 @@ import AdminNewsPosts from './pages/admin/AdminNewsPosts'
 import AddNewsPost from './pages/admin/CreatePage/News/AddNewsPost'
 import AdminDetailNewsPost from './pages/admin/DetailPage/AdminDetailNewsPost'
 import NewsDetail from './pages/NewsDetail'
+import AdminShowcase from './pages/admin/AdminShowcase'
 
 function App() {
   return (
@@ -109,6 +110,7 @@ function App() {
                     <Route path="pages" element={<AdminPages />} />
                     <Route path="pages/:slug" element={<AdminDetailPage />} />
                     <Route path="pages/add" element={<AddPage />} />
+                    <Route path="showcase" element={<AdminShowcase />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Routes>
                 </AdminLayout>

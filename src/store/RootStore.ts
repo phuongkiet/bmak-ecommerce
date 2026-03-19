@@ -18,6 +18,8 @@ import NewsStore from './NewsStore'
 import VoucherStore from './VoucherStore'
 import BusinessRuleStore from './BusinessRuleStore'
 import AddressStore from './AddressStore'
+import AdminSettingStore from './AdminSettingStore'
+import RoomSceneStore from './RoomSceneStore'
 
 class RootStore {
   commonStore: CommonStore
@@ -39,6 +41,8 @@ class RootStore {
   voucherStore: VoucherStore
   businessRuleStore: BusinessRuleStore
   addressStore: AddressStore
+  adminSettingStore: AdminSettingStore
+  roomSceneStore: RoomSceneStore
 
   constructor() {
     this.commonStore = new CommonStore(this)
@@ -60,6 +64,8 @@ class RootStore {
     this.voucherStore = new VoucherStore(this)
     this.businessRuleStore = new BusinessRuleStore(this)
     this.addressStore = new AddressStore(this)
+    this.adminSettingStore = new AdminSettingStore(this)
+      this.roomSceneStore = new RoomSceneStore(this)
     
     makeAutoObservable(this)
   }

@@ -7,6 +7,7 @@ import { formatPrice } from "@/utils";
 import UserOrdersTable from "@/components/Orders/UserOrdersTable";
 import UserAddressTable from "@/components/Address/UserAddressTable";
 import UserAccountDetail from "@/components/Account/UserAccountDetail";
+import { toProxiedImageUrl } from "@/utils/imageProxy";
 
 type AccountTab = "overview" | "orders" | "address" | "account" | "favorites";
 
@@ -184,7 +185,7 @@ const MyAccount = observer(() => {
                     <div key={product.productId} className="border border-gray-200 rounded-lg p-4 bg-white">
                       <div className="flex gap-4">
                         <img
-                          src={product.thumbnail || "/images/default/no-image.png"}
+                          src={toProxiedImageUrl(product.thumbnail) || "/images/default/no-image.png"}
                           alt={product.name}
                           className="w-24 h-24 object-contain bg-gray-50 rounded"
                         />

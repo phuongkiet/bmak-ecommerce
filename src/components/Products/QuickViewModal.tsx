@@ -5,6 +5,7 @@ import { getProductById } from "@/agent/api/productApi";
 import type { ProductDto } from "@/models/Product";
 import { useStore } from "@/store";
 import { Link } from "react-router-dom";
+import { proxyImageSourcesInHtml, toProxiedImageUrl } from "@/utils/imageProxy";
 
 interface QuickViewModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ const QuickViewModal = observer(
           const data = await getProductById(productId);
           setProduct(data);
           setQuantity(1);
-          setActiveImage(data.thumbnail || data.images?.[0]?.url || "");
+          setActiveImage(toProxiedImageUrl(data.thumbnail) || toProxiedImageUrl(data.images?.[0]?.url) || "");
         } catch {
           setError("Không thể tải thông tin sản phẩm.");
           setProduct(null);
@@ -59,6 +60,7 @@ const QuickViewModal = observer(
       if (!product) return [];
 
       const images = [product.thumbnail, ...(product.images?.map((item) => item.url) || [])]
+        .map((url) => toProxiedImageUrl(url))
         .filter((url): url is string => Boolean(url));
 
       return Array.from(new Set(images));
@@ -249,7 +251,7 @@ const QuickViewModal = observer(
                 {product.shortDescription && (
                   <div
                     className="prose prose-sm max-w-none mb-4 text-gray-700"
-                    dangerouslySetInnerHTML={{ __html: product.shortDescription }}
+                    dangerouslySetInnerHTML={{ __html: proxyImageSourcesInHtml(product.shortDescription) }}
                   />
                 )}
 

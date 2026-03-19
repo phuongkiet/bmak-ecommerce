@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "@/store";
 import PageSectionsRenderer from "@/components/PageSectionsRenderer";
 import type { NewsPostSummaryDto } from "@/models/NewsPost";
+import { toProxiedImageUrl } from "@/utils/imageProxy";
 
 interface NewsCategory {
   id: number;
@@ -15,7 +16,8 @@ interface NewsCategory {
 
 const News = observer(() => {
   const navigate = useNavigate();
-  const { pageStore, newsStore } = useStore();
+  const { pageStore, newsStore, adminSettingStore } = useStore();
+  const siteName = adminSettingStore.setting?.siteName?.trim() || 'BMAK Store';
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
@@ -61,7 +63,7 @@ const News = observer(() => {
     new Date(post.publishedAt || post.createdAt).toLocaleDateString("vi-VN");
 
   const getThumbnail = (post: NewsPostSummaryDto) =>
-    post.thumbnailUrl || "/images/default/no-image.png";
+    toProxiedImageUrl(post.thumbnailUrl) || "/images/default/no-image.png";
 
   const goToNewsDetail = (id: number) => {
     navigate(`/news/${id}`);
@@ -163,7 +165,7 @@ const News = observer(() => {
                           {/* Meta */}
                           <div className="flex items-center justify-between text-sm text-gray-500">
                             <div className="flex items-center gap-4">
-                              <span>By BMAK Store</span>
+                              <span>By {siteName}</span>
                               <span>•</span>
                               <span>{article.categoryName}</span>
                             </div>

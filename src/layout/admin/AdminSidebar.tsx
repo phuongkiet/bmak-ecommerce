@@ -25,6 +25,7 @@ const AdminSidebar = observer(() => {
     { path: "/admin/customers", icon: Users, label: "Quản lý người dùng" },
     { path: "/admin/orders", icon: ShoppingCart, label: "Đơn hàng" },
     { path: "/admin/pages", icon: FileEdit, label: "Trang" },
+    { path: "/admin/showcase", icon: FileEdit, label: "Showcase" },
     { path: "/admin/settings", icon: Settings, label: "Cài đặt" },
   ];
 

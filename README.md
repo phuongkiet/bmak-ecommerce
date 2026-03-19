@@ -118,6 +118,7 @@ Tạo file `.env` trong root directory:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 ## 🔜 Tính năng sắp tới

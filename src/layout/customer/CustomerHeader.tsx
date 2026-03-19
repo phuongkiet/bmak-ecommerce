@@ -6,9 +6,10 @@ import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
 import * as productApi from '@/agent/api/productApi'
 import type { ProductSummaryDto } from '@/models/Product'
+import { toProxiedImageUrl } from '@/utils/imageProxy'
 
 const CustomerHeader = observer(() => {
-  const { cartStore, authStore, categoryStore } = useStore()
+  const { cartStore, authStore, categoryStore, adminSettingStore } = useStore()
   const location = useLocation()
   const [isProductsMenuOpen, setIsProductsMenuOpen] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
@@ -93,6 +94,8 @@ const CustomerHeader = observer(() => {
   }
 
   const navigate = useNavigate()
+  const siteName = adminSettingStore.setting?.siteName?.trim() || 'GAVICO'
+  const logoUrl = adminSettingStore.setting?.logoUrl?.trim() || ''
 
   const handleLogout = async () => {
     await authStore.logout()
@@ -112,8 +115,11 @@ const CustomerHeader = observer(() => {
         <div className="flex items-center justify-between">
           {/* Logo Section */}
           <div className="flex-shrink-0">
-            <Link to="/" className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors">
-              GAVICO
+            <Link to="/" className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors flex items-center gap-2">
+              {logoUrl ? (
+                <img src={toProxiedImageUrl(logoUrl)} alt={siteName} className="h-8 w-auto object-contain" />
+              ) : null}
+              {siteName}
             </Link>
           </div>
           
@@ -288,7 +294,7 @@ const CustomerHeader = observer(() => {
                               onClick={() => handleSelectSearchProduct(product.id)}
                             >
                               <img
-                                src={product.thumbnail || '/images/default/no-image.png'}
+                                src={toProxiedImageUrl(product.thumbnail) || '/images/default/no-image.png'}
                                 alt={product.name}
                                 className="w-12 h-12 rounded-full object-cover flex-shrink-0"
                               />

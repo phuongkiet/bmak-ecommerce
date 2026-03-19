@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ProductDto } from "@/models/Product";
+import { proxyImageSourcesInHtml } from "@/utils/imageProxy";
 
 interface ProductExtraInfoTabsProps {
   product: ProductDto;
@@ -119,7 +120,7 @@ const ProductExtraInfoTabs = ({ product }: ProductExtraInfoTabsProps) => {
           product.description ? (
             <div
               className="px-1 py-2 prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: product.description }}
+              dangerouslySetInnerHTML={{ __html: proxyImageSourcesInHtml(product.description) }}
             />
           ) : (
             <div className="px-1 py-2 text-gray-600">Chưa có mô tả</div>

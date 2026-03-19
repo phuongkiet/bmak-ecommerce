@@ -11,6 +11,7 @@ import {
   removeProductFromCompare,
 } from "@/utils/compareStorage";
 import { Heart } from "lucide-react";
+import { proxyImageSourcesInHtml, toProxiedImageUrl } from "@/utils/imageProxy";
 
 const ProductDetail = observer(() => {
   const { id } = useParams();
@@ -36,8 +37,8 @@ const ProductDetail = observer(() => {
 
   const mainImage = useMemo(
     () =>
-      product?.thumbnail ||
-      product?.images?.[0]?.url ||
+      toProxiedImageUrl(product?.thumbnail) ||
+      toProxiedImageUrl(product?.images?.[0]?.url) ||
       "/images/default/no-image.png",
     [product],
   );
@@ -232,7 +233,7 @@ const ProductDetail = observer(() => {
           {product.shortDescription && (
             <div
               className="prose prose-sm max-w-none mb-6"
-              dangerouslySetInnerHTML={{ __html: product.shortDescription }}
+              dangerouslySetInnerHTML={{ __html: proxyImageSourcesInHtml(product.shortDescription) }}
             />
           )}
 

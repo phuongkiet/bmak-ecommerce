@@ -1,15 +1,26 @@
 import { CheckCircle, Clock, Package, Phone } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { observer } from 'mobx-react-lite'
+import { useStore } from '@/store'
+import { useEffect } from 'react'
 
-const CompleteCheckout = () => {
+const CompleteCheckout = observer(() => {
+  const { adminSettingStore } = useStore()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const orderId = searchParams.get('orderId')
+  const siteName = adminSettingStore.setting?.siteName?.trim() || 'GAVICO'
+  const hotline = adminSettingStore.setting?.hotline?.trim() || '1900xxxx'
+  const hotlineHref = `tel:${hotline.replace(/\s+/g, '')}`
   const currentDate = new Date().toLocaleDateString('vi-VN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   })
+
+  useEffect(() => {
+    document.title = `Dat hang thanh cong - ${siteName}`
+  }, [siteName])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white py-6 px-4 flex items-center">
@@ -90,11 +101,11 @@ const CompleteCheckout = () => {
 
         {/* Footer Note */}
         <div className="text-center text-gray-600 text-xs">
-          Liên hệ: <a href="tel:1900xxxx" className="text-primary-600 font-semibold hover:underline">1900xxxx</a>
+          Liên hệ: <a href={hotlineHref} className="text-primary-600 font-semibold hover:underline">{hotline}</a>
         </div>
       </div>
     </div>
   )
-}
+})
 
 export default CompleteCheckout

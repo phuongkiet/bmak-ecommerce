@@ -3,6 +3,7 @@ import { observer } from "mobx-react-lite";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { useStore } from "@/store";
+import { proxyImageSourcesInHtml, toProxiedImageUrl } from "@/utils/imageProxy";
 
 interface SidebarCategory {
     id: number;
@@ -60,7 +61,7 @@ const NewsDetail = observer(() => {
         return new Date(value).toLocaleDateString("vi-VN");
     };
 
-    const coverImage = post?.thumbnailUrl || "/images/default/no-image.png";
+    const coverImage = toProxiedImageUrl(post?.thumbnailUrl) || "/images/default/no-image.png";
 
     if (newsStore.isLoadingPostDetail) {
         return (
@@ -131,7 +132,7 @@ const NewsDetail = observer(() => {
 
                             <div
                                 className="prose prose-lg max-w-none"
-                                dangerouslySetInnerHTML={{ __html: post.content || "" }}
+                                dangerouslySetInnerHTML={{ __html: proxyImageSourcesInHtml(post.content) }}
                             />
                         </article>
                     </div>
@@ -173,7 +174,7 @@ const NewsDetail = observer(() => {
                                                         onClick={() => navigate(`/news/${item.id}`)}
                                                     >
                                                         <img
-                                                            src={item.thumbnailUrl || "/images/default/no-image.png"}
+                                                            src={toProxiedImageUrl(item.thumbnailUrl) || "/images/default/no-image.png"}
                                                             alt={item.title}
                                                             className="w-full h-full object-contain bg-gray-50 rounded"
                                                         />
