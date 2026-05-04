@@ -3,7 +3,6 @@ import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
 import RoomVisualizer from '@/components/Showcase/RoomVisualizer'
 import type { RoomSceneDto } from '@/models/RoomScene'
-import { toProxiedImageUrl } from '@/utils/imageProxy'
 
 const Showcase = observer(() => {
   const { roomSceneStore } = useStore()
@@ -37,7 +36,7 @@ const Showcase = observer(() => {
               >
                 {s.thumbnailUrl ? (
                   <img
-                    src={toProxiedImageUrl(s.thumbnailUrl)}
+                    src={s.thumbnailUrl}
                     alt={s.title || 'Room scene thumbnail'}
                     className="w-20 h-14 object-cover rounded-lg"
                   />
@@ -76,7 +75,9 @@ const Showcase = observer(() => {
 
         {/* Visualizer */}
         {selectedScene && (
-          <RoomVisualizer key={selectedScene.id} scene={selectedScene} />
+          <div className="mx-auto w-full max-w-[1100px]">
+            <RoomVisualizer key={selectedScene.id} scene={selectedScene} />
+          </div>
         )}
       </div>
     </div>

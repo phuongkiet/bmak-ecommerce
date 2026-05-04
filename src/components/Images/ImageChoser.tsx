@@ -98,32 +98,16 @@ const ImageDropZone: React.FC<ImageDropZoneProps> = ({
           onClose={() => setShowPicker(false)}
           multiSelect={false}
           onSelect={(imgOrImgs: AppImageDto | AppImageDto[]) => {
-            // If array provided, take first
+            // For library selections, always return the direct media URL.
             if (Array.isArray(imgOrImgs)) {
               const first = imgOrImgs[0]
               if (!first) return
               if (onSelectImage) onSelectImage(first.url)
-              if (onDrop) {
-                Promise.all(
-                  imgOrImgs.map((it) => fetch(it.url).then((r) => r.blob()))
-                )
-                  .then((blobs) => blobs.map((b, i) => new File([b], imgOrImgs[i].fileName || `image_${i}`, { type: b.type })))
-                  .then((files) => onDrop(files))
-                  .catch((e) => console.error(e))
-              }
+              setShowPicker(false)
             } else {
               const img = imgOrImgs as AppImageDto
               if (onSelectImage) onSelectImage(img.url)
-              if (onDrop) {
-                fetch(img.url)
-                  .then((res) => res.blob())
-                  .then((blob) => {
-                    const name = img.fileName || img.url.split('/').pop() || 'image'
-                    const file = new File([blob], name, { type: blob.type })
-                    onDrop([file])
-                  })
-                  .catch((e) => console.error(e))
-              }
+              setShowPicker(false)
             }
           }}
         />

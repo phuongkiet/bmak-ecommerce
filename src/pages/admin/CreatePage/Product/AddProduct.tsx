@@ -24,6 +24,7 @@ import ImageChoser from "@/components/Images/ImageChoser";
 import MediaPicker from "@/components/Images/MediaPicker";
 import type { AppImageDto } from "@/models/Image";
 import RichTextEditor from "@/components/RichTextEditor";
+import { uploadImage } from "@/agent/api/mediaApi";
 
 const AddProduct = observer(() => {
   const navigate = useNavigate();
@@ -243,21 +244,31 @@ const AddProduct = observer(() => {
     // If called with a string (URL)
     if (typeof payload === "string") {
       setImagePreview(payload);
-      setFormData((prev) => ({ ...prev, imageUrl: payload }));
+      setFormData((prev) => ({ ...prev, thumbnailUrl: payload }));
       return;
     }
+
+    const uploadAndBind = async (file: File) => {
+      if (!file) return;
+      setImageFile(file);
+      try {
+        const uploaded = await uploadImage(file);
+        if (!uploaded?.url) {
+          alert("Upload ảnh thất bại. Vui lòng thử lại.");
+          return;
+        }
+        setImagePreview(uploaded.url);
+        setFormData((prev) => ({ ...prev, thumbnailUrl: uploaded.url }));
+      } catch (err) {
+        console.error("handleImageChange: upload failed", err);
+        alert("Không thể upload ảnh. Vui lòng thử lại.");
+      }
+    };
 
     // If called with File[]
     if (Array.isArray(payload)) {
       const file = payload[0];
-      if (!file) return;
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setFormData((prev) => ({ ...prev, imageUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      void uploadAndBind(file);
       return;
     }
 
@@ -266,16 +277,7 @@ const AddProduct = observer(() => {
       const e = payload as React.ChangeEvent<HTMLInputElement>;
       const file = e.target.files?.[0];
       if (file) {
-        setImageFile(file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImagePreview(reader.result as string);
-          setFormData((prev) => ({
-            ...prev,
-            imageUrl: reader.result as string,
-          }));
-        };
-        reader.readAsDataURL(file);
+        void uploadAndBind(file);
       }
     } catch (err) {
       console.error("handleImageChange: unexpected payload", err);
@@ -285,7 +287,7 @@ const AddProduct = observer(() => {
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
-    setFormData((prev) => ({ ...prev, imageUrl: "" }));
+    setFormData((prev) => ({ ...prev, thumbnailUrl: "" }));
   };
 
   const handleTagChange = (tagValue: string, checked: boolean) => {
@@ -489,9 +491,6 @@ const AddProduct = observer(() => {
         specificationsJson: serializeSpecificationsJson(customSpecifications),
         attributes: productAttributes,
       };
-
-      // TODO: Upload image to server first if needed, then get imageUrl
-      // For now, using base64 or placeholder
 
       await productStore.createProduct(command);
 

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/store'
 import type { CreateRoomSceneCommand, RoomSceneDto, UpdateRoomSceneCommand } from '@/models/RoomScene'
+import MediaPicker from '@/components/Images/MediaPicker'
+import type { AppImageDto } from '@/models/Image'
 
 const EMPTY_FORM: CreateRoomSceneCommand = {
   title: '',
@@ -17,6 +19,7 @@ const AdminShowcase = observer(() => {
   const { roomSceneStore } = useStore()
   const [editingId, setEditingId] = useState<number | null>(null)
   const [formData, setFormData] = useState<CreateRoomSceneCommand>(EMPTY_FORM)
+  const [pickerTarget, setPickerTarget] = useState<keyof Pick<CreateRoomSceneCommand, 'thumbnailUrl' | 'roomLayerUrl' | 'mattLayerUrl' | 'glossyLayerUrl'> | null>(null)
 
   useEffect(() => {
     void roomSceneStore.fetchScenes({ onlyActive: false })
@@ -32,6 +35,18 @@ const AdminShowcase = observer(() => {
 
   const onInput = (key: keyof CreateRoomSceneCommand, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const openPicker = (key: keyof Pick<CreateRoomSceneCommand, 'thumbnailUrl' | 'roomLayerUrl' | 'mattLayerUrl' | 'glossyLayerUrl'>) => {
+    setPickerTarget(key)
+  }
+
+  const handleSelectMedia = (imgOrImgs: AppImageDto | AppImageDto[]) => {
+    if (!pickerTarget) return
+    const selected = Array.isArray(imgOrImgs) ? imgOrImgs[0] : imgOrImgs
+    if (!selected?.url) return
+    onInput(pickerTarget, selected.url)
+    setPickerTarget(null)
   }
 
   const loadToForm = (scene: RoomSceneDto) => {
@@ -192,44 +207,96 @@ const AdminShowcase = observer(() => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail URL</label>
-              <input
-                type="url"
-                value={formData.thumbnailUrl}
-                onChange={(e) => onInput('thumbnailUrl', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail (Chọn từ thư viện)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.thumbnailUrl}
+                  readOnly
+                  placeholder="Chọn ảnh từ Cloudinary library"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => openPicker('thumbnailUrl')}
+                  className="px-3 py-2 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+                >
+                  Chọn ảnh
+                </button>
+              </div>
+              {formData.thumbnailUrl && (
+                <img src={formData.thumbnailUrl} alt="thumbnail" className="mt-2 h-16 w-24 object-cover rounded border border-gray-200" />
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Room layer URL</label>
-              <input
-                type="url"
-                value={formData.roomLayerUrl}
-                onChange={(e) => onInput('roomLayerUrl', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Room layer (Bắt buộc)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.roomLayerUrl}
+                  readOnly
+                  placeholder="Chọn ảnh room layer từ Cloudinary library"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => openPicker('roomLayerUrl')}
+                  className="px-3 py-2 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+                >
+                  Chọn ảnh
+                </button>
+              </div>
+              {formData.roomLayerUrl && (
+                <img src={formData.roomLayerUrl} alt="room-layer" className="mt-2 h-20 w-full object-contain rounded border border-gray-200 bg-gray-50" />
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Matt layer URL</label>
-              <input
-                type="url"
-                value={formData.mattLayerUrl}
-                onChange={(e) => onInput('mattLayerUrl', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Matt layer</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.mattLayerUrl}
+                  readOnly
+                  placeholder="Chọn ảnh matt layer từ Cloudinary library"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => openPicker('mattLayerUrl')}
+                  className="px-3 py-2 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+                >
+                  Chọn ảnh
+                </button>
+              </div>
+              {formData.mattLayerUrl && (
+                <img src={formData.mattLayerUrl} alt="matt-layer" className="mt-2 h-20 w-full object-contain rounded border border-gray-200 bg-gray-50" />
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Glossy layer URL</label>
-              <input
-                type="url"
-                value={formData.glossyLayerUrl}
-                onChange={(e) => onInput('glossyLayerUrl', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Glossy layer</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.glossyLayerUrl}
+                  readOnly
+                  placeholder="Chọn ảnh glossy layer từ Cloudinary library"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => openPicker('glossyLayerUrl')}
+                  className="px-3 py-2 text-xs rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+                >
+                  Chọn ảnh
+                </button>
+              </div>
+              {formData.glossyLayerUrl && (
+                <img src={formData.glossyLayerUrl} alt="glossy-layer" className="mt-2 h-20 w-full object-contain rounded border border-gray-200 bg-gray-50" />
+              )}
             </div>
 
             <div>
@@ -264,6 +331,14 @@ const AdminShowcase = observer(() => {
           </form>
         </div>
       </div>
+
+      {pickerTarget && (
+        <MediaPicker
+          onClose={() => setPickerTarget(null)}
+          multiSelect={false}
+          onSelect={handleSelectMedia}
+        />
+      )}
     </div>
   )
 })
